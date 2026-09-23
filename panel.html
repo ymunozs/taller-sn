@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel del taller</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="Compilación de las respuestas del Taller S y N: operadores elegidos, diversidad y textos por momento.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f5d8a'/%3E%3Cpath d='M8 22V14M14 22V9M20 22v-6M26 22V11' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body class="wide">
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">Panel del taller S y N<small id="estado-carga">Sin datos cargados</small></div>
+    <button class="btn" type="button" id="btn-qr">Mostrar QR</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="card" id="conexion">
+    <h2>Conexión</h2>
+    <div class="toolbar">
+      <label class="field" style="flex:3"><span>URL de la planilla (Apps Script, termina en /exec)</span><input type="url" id="c-endpoint" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <label class="field"><span>Clave del panel</span><input type="password" id="c-clave" autocomplete="off"></label>
+      <button class="btn primary" type="button" id="btn-cargar">Cargar respuestas</button>
+    </div>
+    <div class="toolbar" style="margin-top:10px">
+      <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="c-auto"> Actualizar cada 30 s</label>
+      <span style="flex:1"></span>
+      <label class="btn ghost small" style="cursor:pointer">Importar archivos .json<input type="file" id="c-archivos" accept=".json,application/json" multiple hidden></label>
+      <button class="btn ghost small" type="button" id="btn-csv">Descargar CSV</button>
+    </div>
+    <div id="msg" class="banner hidden" style="margin:12px 0 0"></div>
+  </section>
+
+  <section class="card">
+    <div class="toolbar">
+      <label class="field"><span>Sesión</span><select id="f-sesion"></select></label>
+      <label class="field"><span>Institución</span><select id="f-inst"></select></label>
+      <label class="field"><span>Grupo</span><select id="f-grupo"></select></label>
+    </div>
+  </section>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Operadores elegidos frente al equipo de referencia</h2>
+      <p class="small muted">Porcentaje sobre el total de respuestas de cada fuente. Referencia: <span id="ref-equipo"></span>, subcódigos S y N sin N9.</p>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Estudiantes del taller</span><span><i style="background:var(--ink-3)"></i>Equipo de referencia</span></div>
+      <div id="g-dist"></div>
+    </section>
+    <section class="card">
+      <h2>Diversidad por estudiante</h2>
+      <p class="small muted">Cuántos operadores distintos usó cada estudiante en los 12 momentos (máximo 12).</p>
+      <div id="g-div"></div>
+      <h3 style="margin-top:16px">Por grupo</h3>
+      <div class="table-scroll"><table class="dat" id="t-grupos"></table></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Qué operador eligieron en cada momento</h2>
+    <p class="small muted">Filas: los 12 momentos abiertos de la conversación. Celdas: número de estudiantes que eligió cada operador. Pulsa una celda para leer esas respuestas.</p>
+    <div class="table-scroll" id="g-heat"></div>
+  </section>
+
+  <section class="card" id="lectura">
+    <h2>Leer las respuestas</h2>
+    <div class="toolbar">
+      <label class="field"><span>Momento</span><select id="l-hueco"></select></label>
+      <label class="field"><span>Operador</span><select id="l-op"></select></label>
+    </div>
+    <div id="l-contexto" class="small" style="margin:12px 0"></div>
+    <div id="l-lista"></div>
+  </section>
+</main>
+
+<div class="sheet-backdrop hidden" id="qr-bg"></div>
+<div class="sheet hidden" id="qr-sheet" role="dialog" aria-modal="true" aria-label="Código QR">
+  <div class="sheet-inner qrbox">
+    <div class="toolbar" style="justify-content:center;margin-bottom:10px" id="qr-tabs"></div>
+    <img id="qr-img" alt="Código QR para abrir la actividad">
+    <p id="qr-url" class="small" style="word-break:break-all;margin-top:10px"></p>
+    <button class="btn" type="button" id="qr-close">Cerrar</button>
+  </div>
+</div>
+<div class="tooltip hidden" id="tip"></div>
+
+<script src="config.js"></script>
+<script src="datos.js"></script>
+<script>
+(function () {
+  "use strict";
+  var CFG = window.CONFIG, D = window.DATOS;
+  var OPS = D.operadores.map(function (o) { return o.codigo; });
+  var OPD = {}; D.operadores.forEach(function (o) { OPD[o.codigo] = o; });
+  var HUECOS = [], CONTEXTO = {};
+  (function () {
+    var prev = [], n = 0;
+    D.caso.dialogo.forEach(function (t) {
+      if (t.tipo === "fase") return;
+      if (t.tipo === "hueco") { n++; HUECOS.push({ id: t.id, n: n, habla: t.habla }); CONTEXTO[t.id] = prev.slice(-2); }
+      else prev.push(t);
+    });
+  })();
+  var HN = {}; HUECOS.forEach(function (h) { HN[h.id] = h; });
+  var filas = [], filasImportadas = [], timer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function leer(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+  function guardar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === "class") n.className = attrs[k]; else if (k === "text") n.textContent = attrs[k]; else n.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function (c) { if (c != null) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function aviso(txt, tipo) { var m = $("msg"); m.className = "banner " + (tipo || "ok"); m.textContent = txt; }
+  function pct(x) { return (Math.round(x * 1000) / 10).toLocaleString("es-CL") + " %"; }
+
+  // ---------- conexión ----------
+  $("c-endpoint").value = leer("panelSN:endpoint") || CFG.ENDPOINT || "";
+  $("c-clave").value = leer("panelSN:clave");
+  $("ref-equipo").textContent = "“" + D.equipo_meta.fuente + "” del " + D.equipo_meta.reporte;
+
+  function cargar() {
+    var url = $("c-endpoint").value.trim(), clave = $("c-clave").value;
+    guardar("panelSN:endpoint", url); guardar("panelSN:clave", clave);
+    if (!url) { aviso("Falta la URL de la planilla. Mientras tanto puedes importar archivos .json descargados por los estudiantes.", "warn"); return; }
+    $("estado-carga").textContent = "Cargando…";
+    fetch(url + (url.indexOf("?") > -1 ? "&" : "?") + "clave=" + encodeURIComponent(clave) + "&t=" + Date.now())
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j.ok) throw new Error(j.error || "error");
+        if (!j.filas) { aviso("La planilla responde, pero la clave no es correcta.", "err"); $("estado-carga").textContent = "Clave incorrecta"; return; }
+        filas = j.filas.concat(filasImportadas);
+        $("msg").className = "banner hidden";
+        $("estado-carga").textContent = "Actualizado " + new Date().toLocaleTimeString("es-CL") + " · " + contarEnvios(filas) + " estudiantes";
+        render();
+      })
+      .catch(function (e) { aviso("No se pudo leer la planilla: " + e.message, "err"); $("estado-carga").textContent = "Error de carga"; });
+  }
+  $("btn-cargar").addEventListener("click", cargar);
+  $("c-auto").addEventListener("change", function () {
+    clearInterval(timer); if (this.checked) { cargar(); timer = setInterval(cargar, 30000); }
+  });
+
+  $("c-archivos").addEventListener("change", function () {
+    var files = Array.prototype.slice.call(this.files);
+    Promise.all(files.map(function (f) { return f.text().then(function (t) { try { return JSON.parse(t); } catch (e) { return null; } }); }))
+      .then(function (lista) {
+        var nuevas = [];
+        lista.forEach(function (p) {
+          if (!p || !p.respuestas) return;
+          p.respuestas.forEach(function (r) {
+            nuevas.push({ recibido: p.envio, envio_id: p.id, sesion: p.sesion, institucion: p.institucion, grupo: String(p.grupo),
+              estudiante: p.estudiante, hueco: r.hueco, turno_de: r.turno_de, operador: r.operador, dimension: r.dimension, texto: r.texto });
+          });
+        });
+        var ids = {}; filas.forEach(function (f) { ids[f.envio_id + f.hueco] = 1; });
+        nuevas = nuevas.filter(function (f) { return !ids[f.envio_id + f.hueco]; });
+        filasImportadas = filasImportadas.concat(nuevas); filas = filas.concat(nuevas);
+        aviso("Importadas " + contarEnvios(nuevas) + " respuestas desde archivos.", "ok");
+        $("estado-carga").textContent = contarEnvios(filas) + " estudiantes";
+        render();
+      });
+    this.value = "";
+  });
+
+  function contarEnvios(fs) { var s = {}; fs.forEach(function (f) { s[f.envio_id] = 1; }); return Object.keys(s).length; }
+
+  // ---------- filtros ----------
+  function opciones(sel, valores, todos) {
+    var actual = sel.value; sel.innerHTML = "";
+    sel.appendChild(el("option", { value: "", text: todos }));
+    valores.forEach(function (v) { sel.appendChild(el("option", { value: v, text: v })); });
+    if (valores.indexOf(actual) > -1) sel.value = actual;
+  }
+  function unicos(campo) {
+    var s = {}; filas.forEach(function (f) { if (f[campo] !== "" && f[campo] != null) s[f[campo]] = 1; });
+    return Object.keys(s).sort(function (a, b) { return a.localeCompare(b, "es", { numeric: true }); });
+  }
+  ["f-sesion", "f-inst", "f-grupo"].forEach(function (id) { $(id).addEventListener("change", render); });
+  function filtradas() {
+    var s = $("f-sesion").value, i = $("f-inst").value, g = $("f-grupo").value;
+    return filas.filter(function (f) { return (!s || f.sesion === s) && (!i || f.institucion === i) && (!g || String(f.grupo) === g); });
+  }
+
+  // ---------- render ----------
+  function render() {
+    opciones($("f-sesion"), unicos("sesion"), "Todas");
+    opciones($("f-inst"), unicos("institucion"), "Todas");
+    opciones($("f-grupo"), unicos("grupo"), "Todos");
+    var fs = filtradas();
+    kpis(fs); distribucion(fs); diversidad(fs); grupos(fs); heat(fs); lectura(fs);
+  }
+
+  function porEstudiante(fs) {
+    var m = {};
+    fs.forEach(function (f) {
+      var e = m[f.envio_id] || (m[f.envio_id] = { ops: {}, grupo: f.grupo, institucion: f.institucion, n: 0 });
+      e.ops[f.operador] = 1; e.n++;
+    });
+    return m;
+  }
+
+  function kpis(fs) {
+    var est = porEstudiante(fs), ids = Object.keys(est);
+    var grp = {}; ids.forEach(function (k) { grp[est[k].institucion + "·" + est[k].grupo] = 1; });
+    var prom = ids.length ? ids.reduce(function (a, k) { return a + Object.keys(est[k].ops).length; }, 0) / ids.length : 0;
+    var s = fs.filter(function (f) { return f.dimension === "S"; }).length;
+    var k = $("kpis"); k.innerHTML = "";
+    [[ids.length, "estudiantes"], [Object.keys(grp).length, "grupos"],
+     [prom ? prom.toLocaleString("es-CL", { maximumFractionDigits: 1 }) : "0", "operadores distintos por estudiante (de 12)"],
+     [fs.length ? pct(s / fs.length) : "0 %", "de respuestas en S (equipo de referencia: " + pct(33 / 98) + ")"]
+    ].forEach(function (x) { k.appendChild(el("div", { class: "kpi" }, [el("b", { text: String(x[0]) }), el("span", { text: x[1] })])); });
+  }
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function svg(tag, a) { var n = document.createElementNS(SVGNS, tag); Object.keys(a || {}).forEach(function (k) { n.setAttribute(k, a[k]); }); return n; }
+  var tip = $("tip");
+  function conTip(nodo, texto) {
+    nodo.addEventListener("mousemove", function (e) { tip.textContent = texto; tip.classList.remove("hidden"); tip.style.left = (e.clientX + 12) + "px"; tip.style.top = (e.clientY + 12) + "px"; });
+    nodo.addEventListener("mouseleave", function () { tip.classList.add("hidden"); });
+  }
+
+  function distribucion(fs) {
+    var c = {}; OPS.forEach(function (o) { c[o] = 0; }); fs.forEach(function (f) { if (c[f.operador] != null) c[f.operador]++; });
+    var tot = fs.length || 1, teq = OPS.reduce(function (a, o) { return a + D.equipo[o]; }, 0);
+    var W = 520, fila = 30, izq = 44, H = OPS.length * fila + 24, max = 0;
+    OPS.forEach(function (o) { max = Math.max(max, c[o] / tot, D.equipo[o] / teq); });
+    max = Math.max(0.05, Math.ceil(max * 20) / 20);
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img", "aria-label": "Distribución de operadores" });
+    var ancho = W - izq - 60;
+    [0, max / 2, max].forEach(function (v) {
+      var x = izq + ancho * v / max;
+      s.appendChild(svg("line", { x1: x, x2: x, y1: 0, y2: H - 18, stroke: "var(--line)" }));
+      var t = svg("text", { x: x, y: H - 4, "text-anchor": "middle" }); t.textContent = Math.round(v * 100) + " %"; s.appendChild(t);
+    });
+    OPS.forEach(function (o, i) {
+      var y = i * fila + 4, dim = OPD[o].dim;
+      var lab = svg("text", { x: 0, y: y + 15, "font-weight": "700", fill: dim === "S" ? "var(--s)" : "var(--n)" }); lab.textContent = o; s.appendChild(lab);
+      var a = c[o] / tot, b = D.equipo[o] / teq;
+      var r1 = svg("rect", { x: izq, y: y, width: Math.max(1, ancho * a / max), height: 11, rx: 2, fill: "var(--accent)" });
+      var r2 = svg("rect", { x: izq, y: y + 13, width: Math.max(1, ancho * b / max), height: 7, rx: 2, fill: "var(--ink-3)" });
+      conTip(r1, o + " · " + OPD[o].corto + ": " + c[o] + " respuestas (" + pct(a) + ")");
+      conTip(r2, o + " en el equipo de referencia: " + D.equipo[o] + " citas (" + pct(b) + ")");
+      s.appendChild(r1); s.appendChild(r2);
+      var v = svg("text", { x: izq + ancho * a / max + 6, y: y + 10 }); v.textContent = fs.length ? pct(a) : ""; s.appendChild(v);
+    });
+    var g = $("g-dist"); g.innerHTML = ""; g.appendChild(s);
+  }
+
+  function diversidad(fs) {
+    var est = porEstudiante(fs), h = {}; for (var i = 1; i <= 12; i++) h[i] = 0;
+    Object.keys(est).forEach(function (k) { var n = Object.keys(est[k].ops).length; h[n] = (h[n] || 0) + 1; });
+    var max = Math.max.apply(null, Object.keys(h).map(function (k) { return h[k]; }).concat([1]));
+    var W = 520, H = 170, bw = (W - 20) / 12;
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img", "aria-label": "Histograma de operadores distintos por estudiante" });
+    s.appendChild(svg("line", { x1: 10, x2: W - 10, y1: H - 22, y2: H - 22, stroke: "var(--line)" }));
+    for (var n = 1; n <= 12; n++) {
+      var alto = (H - 50) * h[n] / max, x = 10 + (n - 1) * bw;
+      var r = svg("rect", { x: x + 4, y: H - 22 - alto, width: bw - 8, height: Math.max(alto, h[n] ? 2 : 0), rx: 3, fill: "var(--accent)" });
+      conTip(r, h[n] + " estudiante(s) usaron " + n + " operador(es) distinto(s)");
+      s.appendChild(r);
+      var t = svg("text", { x: x + bw / 2, y: H - 6, "text-anchor": "middle" }); t.textContent = n; s.appendChild(t);
+      if (h[n]) { var v = svg("text", { x: x + bw / 2, y: H - 26 - alto, "text-anchor": "middle" }); v.textContent = h[n]; s.appendChild(v); }
+    }
+    var g = $("g-div"); g.innerHTML = ""; g.appendChild(s);
+  }
+
+  function grupos(fs) {
+    var m = {};
+    fs.forEach(function (f) {
+      var k = f.institucion + " · G" + f.grupo;
+      var g = m[k] || (m[k] = { est: {}, ops: {}, s: 0, n: 0 });
+      g.est[f.envio_id] = 1; g.ops[f.operador] = 1; g.n++; if (f.dimension === "S") g.s++;
+    });
+    var t = $("t-grupos"); t.innerHTML = "";
+    var hr = el("tr"); ["Grupo", "Estudiantes", "Operadores distintos (grupo)", "% S"].forEach(function (h) { hr.appendChild(el("th", { text: h })); });
+    t.appendChild(el("thead", null, [hr]));
+    var tb = el("tbody");
+    Object.keys(m).sort(function (a, b) { return a.localeCompare(b, "es", { numeric: true }); }).forEach(function (k) {
+      var g = m[k], tr = el("tr");
+      [k, Object.keys(g.est).length, Object.keys(g.ops).length + " de 12", pct(g.s / g.n)].forEach(function (v) { tr.appendChild(el("td", { text: String(v) })); });
+      tb.appendChild(tr);
+    });
+    if (!Object.keys(m).length) tb.appendChild(el("tr", null, [el("td", { colspan: "4", class: "muted", text: "Sin respuestas todavía." })]));
+    t.appendChild(tb);
+  }
+
+  function heat(fs) {
+    var c = {}; HUECOS.forEach(function (h) { c[h.id] = {}; OPS.forEach(function (o) { c[h.id][o] = 0; }); });
+    fs.forEach(function (f) { if (c[f.hueco] && c[f.hueco][f.operador] != null) c[f.hueco][f.operador]++; });
+    var max = 1; HUECOS.forEach(function (h) { OPS.forEach(function (o) { max = Math.max(max, c[h.id][o]); }); });
+    var t = el("table", { class: "dat heat" }), hr = el("tr");
+    hr.appendChild(el("th", { text: "Momento", style: "text-align:left" }));
+    OPS.forEach(function (o) { hr.appendChild(el("th", { text: o, style: "color:" + (OPD[o].dim === "S" ? "var(--s)" : "var(--n)") })); });
+    hr.appendChild(el("th", { text: "Distintos" }));
+    t.appendChild(el("thead", null, [hr]));
+    var tb = el("tbody");
+    HUECOS.forEach(function (h) {
+      var tr = el("tr"), distintos = 0;
+      tr.appendChild(el("td", { style: "text-align:left;white-space:nowrap", text: h.n + " · " + h.habla }));
+      OPS.forEach(function (o) {
+        var v = c[h.id][o]; if (v) distintos++;
+        var col = OPD[o].dim === "S" ? "var(--s)" : "var(--n)";
+        var td = el("td", { text: v ? String(v) : "·", style: v ? "cursor:pointer;background:color-mix(in srgb, " + col + " " + Math.round(12 + 70 * v / max) + "%, transparent);font-weight:600" : "color:var(--ink-3)" });
+        if (v) td.addEventListener("click", function () { $("l-hueco").value = h.id; $("l-op").value = o; lectura(filtradas()); $("lectura").scrollIntoView({ behavior: "smooth" }); });
+        tr.appendChild(td);
+      });
+      tr.appendChild(el("td", { text: String(distintos) }));
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    var g = $("g-heat"); g.innerHTML = ""; g.appendChild(t);
+  }
+
+  // ---------- lectura ----------
+  (function () {
+    var sh = $("l-hueco"), so = $("l-op");
+    HUECOS.forEach(function (h) { sh.appendChild(el("option", { value: h.id, text: "Momento " + h.n + " · " + h.habla })); });
+    so.appendChild(el("option", { value: "", text: "Todos" }));
+    OPS.forEach(function (o) { so.appendChild(el("option", { value: o, text: o + " · " + OPD[o].corto })); });
+    sh.addEventListener("change", function () { lectura(filtradas()); });
+    so.addEventListener("change", function () { lectura(filtradas()); });
+  })();
+  function lectura(fs) {
+    var h = $("l-hueco").value, o = $("l-op").value;
+    var ctx = $("l-contexto"); ctx.innerHTML = "";
+    ctx.appendChild(el("div", { class: "muted", text: "Lo que se dijo justo antes:" }));
+    (CONTEXTO[h] || []).forEach(function (t) { ctx.appendChild(el("div", null, [el("b", { text: t.habla + ": " }), t.texto])); });
+    ctx.appendChild(el("div", { class: "muted", style: "margin-top:4px", text: "Luego habla " + HN[h].habla + " (respuesta del estudiante)." }));
+    var lista = $("l-lista"); lista.innerHTML = "";
+    var sel = fs.filter(function (f) { return f.hueco === h && (!o || f.operador === o); });
+    if (!sel.length) { lista.appendChild(el("p", { class: "muted", text: "No hay respuestas con estos filtros." })); return; }
+    sel.sort(function (a, b) { return OPS.indexOf(a.operador) - OPS.indexOf(b.operador); }).forEach(function (f) {
+      var d = OPD[f.operador] || { dim: "", codigo: f.operador };
+      lista.appendChild(el("div", { class: "resp-item" }, [
+        el("span", { class: "chip tag " + d.dim, text: f.operador }),
+        el("div", null, [el("div", { text: f.texto }), el("div", { class: "meta", text: f.estudiante + " · " + f.institucion + " · Grupo " + f.grupo })])
+      ]));
+    });
+  }
+
+  // ---------- CSV ----------
+  $("btn-csv").addEventListener("click", function () {
+    var fs = filtradas(), cols = ["recibido", "envio_id", "sesion", "institucion", "grupo", "estudiante", "hueco", "momento", "turno_de", "operador", "dimension", "texto"];
+    var esc = function (v) { v = v == null ? "" : String(v); return /[",;\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    var out = [cols.join(",")].concat(fs.map(function (f) {
+      return cols.map(function (c) { return esc(c === "momento" ? (HN[f.hueco] || {}).n : f[c]); }).join(",");
+    }));
+    var blob = new Blob(["﻿" + out.join("\n")], { type: "text/csv;charset=utf-8" });
+    var a = el("a", { href: URL.createObjectURL(blob), download: "respuestas_taller_SN.csv" });
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  // ---------- QR ----------
+  var QRS = [{ id: "general", t: "General" }].concat(CFG.INSTITUCIONES.map(function (i) { return { id: i, t: i }; }));
+  var base = CFG.URL_PUBLICA || location.href.replace(/panel\.html.*$/, "");
+  function verQR(q) {
+    $("qr-img").src = "qr-" + q.id + ".svg";
+    $("qr-url").textContent = base + (q.id === "general" ? "" : "?i=" + encodeURIComponent(q.id));
+    Array.prototype.forEach.call($("qr-tabs").children, function (b) { b.setAttribute("aria-selected", b.dataset.id === q.id ? "true" : "false"); });
+  }
+  QRS.forEach(function (q) {
+    var b = el("button", { class: "tab", type: "button", "data-id": q.id, text: q.t });
+    b.addEventListener("click", function () { verQR(q); }); $("qr-tabs").appendChild(b);
+  });
+  function qr(abrir) { $("qr-sheet").classList.toggle("hidden", !abrir); $("qr-bg").classList.toggle("hidden", !abrir); }
+  $("btn-qr").addEventListener("click", function () { verQR(QRS[0]); qr(true); });
+  $("qr-close").addEventListener("click", function () { qr(false); });
+  $("qr-bg").addEventListener("click", function () { qr(false); });
+
+  render();
+  if ($("c-endpoint").value && $("c-clave").value) cargar();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taller S y N</title>
+<meta name="description" content="Caso “La tabla de puntos”: completa la conversación del equipo con operadores de las dimensiones S y N.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f5d8a'/%3E%3Cpath d='M8 11h16v8H15l-5 4v-4H8z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">Aprender a colaborar · Taller S y N<small id="sesion-label"></small></div>
+    <button class="icon-btn" id="btn-cartilla-top" type="button" aria-label="Abrir la cartilla de operadores" title="Cartilla de operadores">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V21h16"/></svg>
+    </button>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Pasos">
+    <button class="tab" role="tab" data-tab="datos" aria-selected="true">1 · Tus datos</button>
+    <button class="tab" role="tab" data-tab="caso" aria-selected="false">2 · El caso</button>
+    <button class="tab" role="tab" data-tab="dialogo" aria-selected="false">3 · La conversación</button>
+    <button class="tab" role="tab" data-tab="enviar" aria-selected="false">4 · Enviar</button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div id="banner-modo" class="banner warn hidden"></div>
+  <div id="banner-pendiente" class="banner err hidden"></div>
+
+  <!-- 1. Datos -->
+  <section data-panel="datos">
+    <div class="card">
+      <h1>Completa la conversación</h1>
+      <p>Vas a leer un caso y la conversación de un equipo de cuatro estudiantes que intenta resolverlo. En <b>12 momentos</b> la conversación queda abierta. En cada uno:</p>
+      <ol>
+        <li>eliges el <b>operador</b> (S o N) que usarías en ese momento, y</li>
+        <li>escribes <b>lo que diría</b> ese personaje, con tus palabras, de modo que la conversación pueda seguir.</li>
+      </ol>
+      <p class="muted small">No hay una única respuesta correcta: en casi todos los momentos caben varios operadores. Intenta usar operadores distintos a lo largo de la conversación.</p>
+    </div>
+    <div class="card">
+      <h2>Tus datos</h2>
+      <label class="field"><span>Nombre y apellido</span>
+        <input type="text" id="f-nombre" autocomplete="name" maxlength="80" placeholder="Ej.: Camila Rojas">
+      </label>
+      <label class="field"><span>Institución</span>
+        <select id="f-institucion"></select>
+      </label>
+      <label class="field"><span>Grupo</span>
+        <select id="f-grupo"></select>
+      </label>
+      <p class="muted small">Tus respuestas quedan registradas para el equipo del taller, junto con tu nombre y grupo.</p>
+      <button class="btn primary block" type="button" data-go="caso">Continuar al caso</button>
+    </div>
+  </section>
+
+  <!-- 2. Caso -->
+  <section data-panel="caso" class="hidden">
+    <article class="card caso-texto" id="caso"></article>
+    <button class="btn primary block" type="button" data-go="dialogo">Ir a la conversación</button>
+  </section>
+
+  <!-- 3. Diálogo -->
+  <section data-panel="dialogo" class="hidden">
+    <div class="card flat">
+      <p id="presentacion" class="small"></p>
+      <div class="small muted" style="margin-bottom:6px">Operadores que has usado hasta ahora:</div>
+      <div class="chips" id="chips-uso"></div>
+    </div>
+    <div id="dialogo"></div>
+    <button class="btn primary block" type="button" data-go="enviar">Revisar y enviar</button>
+  </section>
+
+  <!-- 4. Enviar -->
+  <section data-panel="enviar" class="hidden">
+    <div class="card" id="revision"></div>
+    <div class="card hidden" id="exito"></div>
+  </section>
+</main>
+
+<div class="progreso" id="progreso">
+  <div class="progreso-inner">
+    <div class="txt">
+      <div><b id="p-huecos">0/12</b> momentos completos · <b id="p-ops">0</b> operadores distintos</div>
+      <div class="barra"><i id="p-barra"></i></div>
+    </div>
+    <button class="btn" type="button" id="btn-cartilla">Cartilla</button>
+  </div>
+</div>
+
+<div class="sheet-backdrop hidden" id="sheet-bg"></div>
+<div class="sheet hidden" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="sheet-inner">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <h2 id="sheet-title" style="flex:1;margin:0">Cartilla de operadores S y N</h2>
+      <button class="icon-btn" type="button" id="sheet-close" aria-label="Cerrar">✕</button>
+    </div>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="datos.js"></script>
+<script>
+(function () {
+  "use strict";
+  var CFG = window.CONFIG, D = window.DATOS, CASO = D.caso;
+  var params = new URLSearchParams(location.search);
+  var SESION = params.get("s") || CFG.SESION;
+  var KEY = "tallerSN:v1:" + SESION;
+  var KEY_PEND = "tallerSN:pendientes";
+  var OPS = {}; D.operadores.forEach(function (o) { OPS[o.codigo] = o; });
+  var HUECOS = CASO.dialogo.filter(function (t) { return t.tipo === "hueco"; });
+  var MIN = CFG.MIN_CARACTERES || 10;
+
+  // ---------- almacenamiento local (tolerante a fallos) ----------
+  function leer(k, def) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
+  function guardar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function uuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+  }
+  function nuevoEstado() { return { id: uuid(), inicio: new Date().toISOString(), datos: {}, resp: {}, enviado: null }; }
+  var estado = leer(KEY, null) || nuevoEstado();
+  function persistir() { guardar(KEY, estado); }
+
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === "class") n.className = attrs[k];
+      else if (k === "text") n.textContent = attrs[k];
+      else if (k === "html") n.innerHTML = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function $(id) { return document.getElementById(id); }
+
+  // ---------- cabecera y modo ----------
+  $("sesion-label").textContent = "Sesión: " + SESION;
+  if (!CFG.ENDPOINT) {
+    var b = $("banner-modo");
+    b.textContent = "Modo local: esta página aún no está conectada a la planilla del taller. Tus respuestas se guardan en este dispositivo y podrás descargarlas al final.";
+    b.classList.remove("hidden");
+  }
+
+  // ---------- pestañas ----------
+  function irA(tab) {
+    document.querySelectorAll(".tab").forEach(function (t) { t.setAttribute("aria-selected", t.dataset.tab === tab ? "true" : "false"); });
+    document.querySelectorAll("[data-panel]").forEach(function (p) { p.classList.toggle("hidden", p.dataset.panel !== tab); });
+    if (tab === "enviar") renderRevision();
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll(".tab").forEach(function (t) { t.addEventListener("click", function () { irA(t.dataset.tab); }); });
+  document.querySelectorAll("[data-go]").forEach(function (b) { b.addEventListener("click", function () { irA(b.dataset.go); }); });
+
+  // ---------- datos personales ----------
+  var fN = $("f-nombre"), fI = $("f-institucion"), fG = $("f-grupo");
+  fI.appendChild(el("option", { value: "", text: "Elige…" }));
+  CFG.INSTITUCIONES.forEach(function (i) { fI.appendChild(el("option", { value: i, text: i })); });
+  fI.appendChild(el("option", { value: "Otra", text: "Otra" }));
+  fG.appendChild(el("option", { value: "", text: "Elige…" }));
+  for (var g = 1; g <= CFG.GRUPOS; g++) fG.appendChild(el("option", { value: String(g), text: "Grupo " + g }));
+  if (!estado.datos.institucion && params.get("i")) estado.datos.institucion = params.get("i");
+  if (!estado.datos.grupo && params.get("g")) estado.datos.grupo = params.get("g");
+  fN.value = estado.datos.nombre || ""; fI.value = estado.datos.institucion || ""; fG.value = estado.datos.grupo || "";
+  [fN, fI, fG].forEach(function (f) {
+    f.addEventListener("input", function () {
+      estado.datos = { nombre: fN.value.trim(), institucion: fI.value, grupo: fG.value }; persistir();
+    });
+  });
+
+  // ---------- caso ----------
+  (function renderCaso() {
+    var c = $("caso");
+    c.appendChild(el("div", { class: "small muted", text: "Caso" }));
+    c.appendChild(el("h1", { text: "“" + CASO.titulo + "”" }));
+    var ficha = el("div", { class: "ficha" });
+    Object.keys(CASO.ficha).forEach(function (k) { ficha.appendChild(el("div", null, [el("b", { text: k }), CASO.ficha[k]])); });
+    c.appendChild(ficha);
+    c.appendChild(el("h2", { text: CASO.contexto_titulo }));
+    CASO.contexto.forEach(function (p) { c.appendChild(el("p", { text: p })); });
+    var ol = el("ol", { class: "preguntas" });
+    CASO.preguntas.forEach(function (q) { ol.appendChild(el("li", { text: q })); });
+    c.appendChild(ol);
+    c.appendChild(el("p", { html: "<b>" + CASO.consigna_informe + "</b>" }));
+    c.appendChild(el("h2", { text: "Anexos", style: "margin-top:18px" }));
+    CASO.anexos.forEach(function (a) {
+      var d = el("details", { class: "anexo" }), body = el("div");
+      d.appendChild(el("summary", { text: a.titulo }));
+      if (a.items) { var ul = el("ul"); a.items.forEach(function (i) { ul.appendChild(el("li", { text: i })); }); body.appendChild(ul); }
+      if (a.tabla) {
+        var t = el("table", { class: "dat" }), tr = el("tr");
+        a.tabla.encabezado.forEach(function (h) { tr.appendChild(el("th", { text: h })); });
+        t.appendChild(el("thead", null, [tr]));
+        var tb = el("tbody");
+        a.tabla.filas.forEach(function (f) { var r = el("tr"); f.forEach(function (v) { r.appendChild(el("td", { text: v })); }); tb.appendChild(r); });
+        t.appendChild(tb); body.appendChild(el("div", { class: "table-scroll" }, [t]));
+      }
+      if (a.nota) body.appendChild(el("p", { class: "small muted", style: "margin-top:8px", text: a.nota }));
+      d.appendChild(body); c.appendChild(d);
+    });
+  })();
+
+  // ---------- diálogo ----------
+  $("presentacion").textContent = CASO.presentacion_dialogo;
+  function opcionesSelect(sel) {
+    sel.appendChild(el("option", { value: "", text: "Elige el operador…" }));
+    ["S", "N"].forEach(function (dim) {
+      var og = el("optgroup", { label: dim + " · " + D.dimensiones[dim].nombre });
+      D.operadores.filter(function (o) { return o.dim === dim; }).forEach(function (o) {
+        og.appendChild(el("option", { value: o.codigo, text: o.codigo + " · " + o.corto }));
+      });
+      sel.appendChild(og);
+    });
+  }
+  function defOperador(box, cod) {
+    box.innerHTML = "";
+    if (!cod) { box.classList.add("hidden"); return; }
+    var o = OPS[cod];
+    box.className = "def-op " + o.dim;
+    box.appendChild(el("div", null, [el("b", { text: o.codigo + ". " }), o.def]));
+    box.appendChild(el("em", { text: "Ejemplo: " + o.ej }));
+  }
+  var nodosHueco = {};
+  (function renderDialogo() {
+    var cont = $("dialogo"), n = 0;
+    CASO.dialogo.forEach(function (t) {
+      if (t.tipo === "fase") { cont.appendChild(el("div", { class: "fase", text: t.texto })); return; }
+      var color = CASO.personajes[t.habla] || "#666";
+      if (t.tipo !== "hueco") {
+        cont.appendChild(el("div", { class: "turno" }, [
+          el("div", { class: "avatar", style: "background:" + color, "aria-hidden": "true", text: t.habla.charAt(0) }),
+          el("div", { class: "burbuja" }, [el("div", { class: "quien", style: "color:" + color, text: t.habla }), el("div", { text: t.texto })])
+        ]));
+        return;
+      }
+      n++;
+      var r = estado.resp[t.id] || {};
+      var box = el("div", { class: "hueco", id: "hueco-" + t.id });
+      var estadoTag = el("span", { class: "estado", text: "Pendiente" });
+      box.appendChild(el("div", { class: "hueco-head" }, [
+        el("div", { class: "avatar", style: "background:" + color, "aria-hidden": "true", text: t.habla.charAt(0) }),
+        el("div", { class: "titulo" }, [el("div", { class: "num", text: "Momento " + n + " de " + HUECOS.length }), "Te toca hablar como " + t.habla]),
+        estadoTag
+      ]));
+      var sel = el("select", { id: "op-" + t.id, "aria-label": "Operador del momento " + n });
+      opcionesSelect(sel); sel.value = r.op || "";
+      var def = el("div", { class: "def-op hidden" });
+      var ta = el("textarea", { id: "tx-" + t.id, maxlength: "600", rows: "3",
+        placeholder: "Escribe lo que diría " + t.habla + " para que la conversación pueda seguir…",
+        "aria-label": "Lo que diría " + t.habla + " en el momento " + n });
+      ta.value = r.txt || "";
+      box.appendChild(el("label", { class: "field" }, [el("span", { text: "Operador" }), sel]));
+      box.appendChild(def);
+      box.appendChild(el("label", { class: "field", style: "margin-bottom:0" }, [el("span", { text: "Lo que diría " + t.habla }), ta]));
+      cont.appendChild(box);
+      nodosHueco[t.id] = { box: box, tag: estadoTag, sel: sel, ta: ta, def: def, n: n, habla: t.habla };
+      defOperador(def, sel.value);
+      function upd() {
+        estado.resp[t.id] = { op: sel.value, txt: ta.value };
+        defOperador(def, sel.value); persistir(); refrescar();
+      }
+      sel.addEventListener("change", upd);
+      ta.addEventListener("input", upd);
+    });
+  })();
+
+  function completo(id) { var r = estado.resp[id]; return !!(r && r.op && r.txt && r.txt.trim().length >= MIN); }
+  function refrescar() {
+    var hechos = 0, usados = {};
+    HUECOS.forEach(function (h) {
+      var ok = completo(h.id), nd = nodosHueco[h.id];
+      if (ok) hechos++;
+      nd.box.classList.toggle("completo", ok);
+      nd.tag.textContent = ok ? "Completo" : "Pendiente";
+      var r = estado.resp[h.id]; if (r && r.op) usados[r.op] = true;
+    });
+    $("p-huecos").textContent = hechos + "/" + HUECOS.length;
+    $("p-ops").textContent = Object.keys(usados).length + " de " + D.operadores.length;
+    $("p-barra").style.width = (100 * hechos / HUECOS.length) + "%";
+    var chips = $("chips-uso"); chips.innerHTML = "";
+    D.operadores.forEach(function (o) {
+      chips.appendChild(el("span", { class: "chip " + o.dim + (usados[o.codigo] ? " on" : ""), title: o.corto, text: o.codigo }));
+    });
+  }
+  refrescar();
+
+  // ---------- cartilla ----------
+  (function renderCartilla() {
+    var b = $("sheet-body");
+    ["S", "N"].forEach(function (dim) {
+      b.appendChild(el("h3", { style: "margin-top:12px", text: dim + " · " + D.dimensiones[dim].nombre }));
+      b.appendChild(el("p", { class: "small muted", text: D.dimensiones[dim].def }));
+      D.operadores.filter(function (o) { return o.dim === dim; }).forEach(function (o) {
+        b.appendChild(el("div", { class: "op-item" }, [
+          el("div", null, [el("span", { class: "chip tag " + dim, text: o.codigo }), " ", el("b", { text: o.corto })]),
+          el("p", { text: o.def }), el("p", { class: "muted", text: "Ejemplo: " + o.ej })
+        ]));
+      });
+    });
+    b.appendChild(el("p", { class: "small muted", style: "margin-top:10px", text: "Cartilla basada en Zhang (2022). N9 no se trabaja en este taller." }));
+  })();
+  function abrirCartilla(abrir) { $("sheet").classList.toggle("hidden", !abrir); $("sheet-bg").classList.toggle("hidden", !abrir); }
+  $("btn-cartilla").addEventListener("click", function () { abrirCartilla(true); });
+  $("btn-cartilla-top").addEventListener("click", function () { abrirCartilla(true); });
+  $("sheet-close").addEventListener("click", function () { abrirCartilla(false); });
+  $("sheet-bg").addEventListener("click", function () { abrirCartilla(false); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") abrirCartilla(false); });
+
+  // ---------- revisión y envío ----------
+  function faltantes() {
+    var f = [];
+    if (!estado.datos.nombre) f.push({ t: "Tu nombre", go: "datos" });
+    if (!estado.datos.institucion) f.push({ t: "Tu institución", go: "datos" });
+    if (!estado.datos.grupo) f.push({ t: "Tu grupo", go: "datos" });
+    HUECOS.forEach(function (h) {
+      if (!completo(h.id)) {
+        var r = estado.resp[h.id] || {}, nd = nodosHueco[h.id];
+        var falta = !r.op ? "falta el operador" : "falta el texto (mínimo " + MIN + " caracteres)";
+        f.push({ t: "Momento " + nd.n + " (" + nd.habla + "): " + falta, hueco: h.id });
+      }
+    });
+    return f;
+  }
+  function payload() {
+    return {
+      id: estado.id, version: CASO.version || "", sesion: SESION,
+      institucion: estado.datos.institucion, grupo: estado.datos.grupo, estudiante: estado.datos.nombre,
+      inicio: estado.inicio, envio: new Date().toISOString(),
+      respuestas: HUECOS.map(function (h) {
+        var r = estado.resp[h.id];
+        return { hueco: h.id, turno_de: h.habla, operador: r.op, dimension: OPS[r.op].dim, texto: r.txt.trim() };
+      })
+    };
+  }
+  function descargar(obj, nombre) {
+    var blob = new Blob([JSON.stringify(obj, null, 1)], { type: "application/json" });
+    var a = el("a", { href: URL.createObjectURL(blob), download: nombre });
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  function nombreArchivo(p) {
+    return "respuesta_" + (p.institucion || "") + "_G" + (p.grupo || "") + "_" + (p.estudiante || "").replace(/[^\wÁÉÍÓÚÑáéíóúñ]+/g, "-") + ".json";
+  }
+
+  function renderRevision() {
+    var rv = $("revision"), ex = $("exito");
+    if (estado.enviado) { rv.classList.add("hidden"); renderExito(); return; }
+    rv.classList.remove("hidden"); ex.classList.add("hidden");
+    rv.innerHTML = "";
+    rv.appendChild(el("h2", { text: "Revisa y envía" }));
+    var f = faltantes();
+    if (f.length) {
+      rv.appendChild(el("p", { text: "Antes de enviar, completa lo siguiente:" }));
+      var ul = el("ul");
+      f.forEach(function (x) {
+        var a = el("a", { href: "#", text: x.t });
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          if (x.hueco) { irA("dialogo"); var n = nodosHueco[x.hueco]; n.box.scrollIntoView({ behavior: "smooth" }); setTimeout(function () { (n.sel.value ? n.ta : n.sel).focus(); }, 350); }
+          else irA(x.go);
+        });
+        ul.appendChild(el("li", null, [a]));
+      });
+      rv.appendChild(ul);
+      return;
+    }
+    var usados = {}; HUECOS.forEach(function (h) { usados[estado.resp[h.id].op] = 1; });
+    rv.appendChild(el("p", { text: "Completaste los " + HUECOS.length + " momentos usando " + Object.keys(usados).length + " operadores distintos." }));
+    var lista = el("div", { style: "margin:10px 0 16px" });
+    HUECOS.forEach(function (h) {
+      var r = estado.resp[h.id], o = OPS[r.op];
+      lista.appendChild(el("div", { class: "resp-item" }, [
+        el("span", { class: "chip tag " + o.dim, text: o.codigo }),
+        el("div", null, [el("div", { class: "meta", text: "Momento " + nodosHueco[h.id].n + " · " + h.habla }), el("div", { text: r.txt.trim() })])
+      ]));
+    });
+    rv.appendChild(lista);
+    var msg = el("div", { class: "banner hidden" });
+    var btn = el("button", { class: "btn primary block", type: "button", text: CFG.ENDPOINT ? "Enviar mis respuestas" : "Guardar y descargar mis respuestas" });
+    btn.addEventListener("click", function () { enviar(btn, msg); });
+    rv.appendChild(msg); rv.appendChild(btn);
+  }
+
+  function marcarEnviado(modo) { estado.enviado = { fecha: new Date().toISOString(), modo: modo }; persistir(); renderRevision(); }
+
+  function enviar(btn, msg) {
+    var p = payload();
+    estado.ultimoPayload = p; persistir();
+    if (!CFG.ENDPOINT) { descargar(p, nombreArchivo(p)); marcarEnviado("local"); return; }
+    btn.disabled = true; btn.textContent = "Enviando…";
+    postear(p).then(function (modo) {
+      quitarPendiente(p.id); marcarEnviado(modo);
+    }).catch(function () {
+      agregarPendiente(p);
+      btn.disabled = false; btn.textContent = "Reintentar el envío";
+      msg.className = "banner err";
+      msg.textContent = "No se pudo enviar (¿sin conexión?). Tus respuestas quedaron guardadas en este dispositivo: reintenta en un momento, o descárgalas y entrégaselas al equipo del taller.";
+      if (!$("btn-desc-fallo")) {
+        var d = el("button", { class: "btn block", type: "button", id: "btn-desc-fallo", style: "margin-top:8px", text: "Descargar mis respuestas" });
+        d.addEventListener("click", function () { descargar(estado.ultimoPayload, nombreArchivo(estado.ultimoPayload)); });
+        msg.parentNode.appendChild(d);
+      }
+    });
+  }
+
+  // POST de texto plano (sin preflight). Si la respuesta no es legible, se reintenta
+  // en modo no-cors: el envío llega, pero sin confirmación del servidor.
+  function postear(p) {
+    var body = JSON.stringify(p);
+    return fetch(CFG.ENDPOINT, { method: "POST", body: body, headers: { "Content-Type": "text/plain;charset=utf-8" }, redirect: "follow" })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (!j || !j.ok) throw new Error((j && j.error) || "respuesta inválida"); return "confirmado"; })
+      .catch(function (err) {
+        if (!navigator.onLine) throw err;
+        return fetch(CFG.ENDPOINT, { method: "POST", mode: "no-cors", body: body, headers: { "Content-Type": "text/plain;charset=utf-8" } })
+          .then(function () { return "sin-confirmacion"; });
+      });
+  }
+  function agregarPendiente(p) { var l = leer(KEY_PEND, []).filter(function (x) { return x.id !== p.id; }); l.push(p); guardar(KEY_PEND, l); }
+  function quitarPendiente(id) { guardar(KEY_PEND, leer(KEY_PEND, []).filter(function (x) { return x.id !== id; })); }
+  (function reintentarPendientes() {
+    var l = leer(KEY_PEND, []);
+    if (!l.length || !CFG.ENDPOINT) return;
+    var b = $("banner-pendiente");
+    b.textContent = "Hay " + l.length + " envío(s) pendiente(s) en este dispositivo. Reintentando…"; b.classList.remove("hidden");
+    Promise.all(l.map(function (p) { return postear(p).then(function () { quitarPendiente(p.id); return 1; }, function () { return 0; }); }))
+      .then(function (res) {
+        var ok = res.reduce(function (a, b) { return a + b; }, 0), quedan = leer(KEY_PEND, []).length;
+        if (!quedan) { b.className = "banner ok"; b.textContent = "Se enviaron " + ok + " respuesta(s) que habían quedado pendientes."; }
+        else b.textContent = "Quedan " + quedan + " envío(s) pendiente(s). Revisa tu conexión y recarga la página.";
+      });
+  })();
+
+  function renderExito() {
+    var ex = $("exito"); ex.classList.remove("hidden"); ex.innerHTML = "";
+    var modo = estado.enviado.modo;
+    ex.appendChild(el("h2", { text: modo === "local" ? "Respuestas guardadas" : "¡Respuestas enviadas!" }));
+    var txt = { confirmado: "El equipo del taller ya tiene tus respuestas. Gracias.",
+      "sin-confirmacion": "Tus respuestas se enviaron. El servidor no devolvió confirmación, así que conviene avisar al equipo del taller si algo no aparece.",
+      local: "Se descargó un archivo con tus respuestas. Entrégaselo al equipo del taller." }[modo];
+    ex.appendChild(el("p", { text: txt }));
+    ex.appendChild(el("p", { class: "small muted", text: "Registro: " + estado.id.slice(0, 8) + " · " + new Date(estado.enviado.fecha).toLocaleString("es-CL") }));
+    var d = el("button", { class: "btn block", type: "button", text: "Descargar una copia", style: "margin-bottom:8px" });
+    d.addEventListener("click", function () { var p = estado.ultimoPayload || payload(); descargar(p, nombreArchivo(p)); });
+    var nuevo = el("button", { class: "btn ghost block", type: "button", text: "Empezar de nuevo (otra persona en este dispositivo)" });
+    nuevo.addEventListener("click", function () {
+      var inst = estado.datos.institucion, grp = estado.datos.grupo;
+      estado = nuevoEstado(); estado.datos = { institucion: inst, grupo: grp }; persistir(); location.reload();
+    });
+    ex.appendChild(d); ex.appendChild(nuevo);
+  }
+
+  if (estado.enviado) irA("enviar");
+})();
+</script>
+</body>
+</html>
