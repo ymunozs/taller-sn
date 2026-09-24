@@ -1,7 +1,7 @@
 // Generado por build.py; no editar a mano.
 window.DATOS = {
  "caso": {
-  "version": "2026-09-23",
+  "version": "2026-09-23 (18 momentos)",
   "titulo": "La tabla de puntos",
   "ficha": {
    "Nivel": "Nivel Transición (kínder)",
@@ -128,9 +128,9 @@ window.DATOS = {
     "texto": "¿Y los anexos hay que leerlos todos?"
    },
    {
-    "id": "t4",
-    "habla": "Antonia",
-    "texto": "Todos. La profe dijo que ahí está la información para fundamentar."
+    "tipo": "hueco",
+    "id": "B1",
+    "habla": "Antonia"
    },
    {
     "id": "t5",
@@ -159,7 +159,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B1",
+    "id": "B2",
     "habla": "Matías"
    },
    {
@@ -188,7 +188,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B2",
+    "id": "B3",
     "habla": "Josefa"
    },
    {
@@ -218,7 +218,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B3",
+    "id": "B4",
     "habla": "Antonia"
    },
    {
@@ -237,9 +237,9 @@ window.DATOS = {
     "texto": "O sea, que Martín haga algo aparte mientras el resto hace los relevos."
    },
    {
-    "id": "t22",
-    "habla": "Matías",
-    "texto": "No sé… me quedan dudas de que eso no lo haga sentir peor."
+    "tipo": "hueco",
+    "id": "B5",
+    "habla": "Matías"
    },
    {
     "id": "t23",
@@ -252,9 +252,9 @@ window.DATOS = {
     "texto": "Como parte del conflicto. Los actores son los adultos que tienen que decidir."
    },
    {
-    "id": "t25",
-    "habla": "Diego",
-    "texto": "Ya, me parece."
+    "tipo": "hueco",
+    "id": "B6",
+    "habla": "Diego"
    },
    {
     "id": "t26",
@@ -263,7 +263,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B4",
+    "id": "B7",
     "habla": "Josefa"
    },
    {
@@ -297,7 +297,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B5",
+    "id": "B8",
     "habla": "Matías"
    },
    {
@@ -316,9 +316,9 @@ window.DATOS = {
     "texto": "Ahí dice que es una pauta de observación con tres niveles: logrado, en desarrollo y por lograr. No hay tiempos ni rankings."
    },
    {
-    "id": "t35",
-    "habla": "Matías",
-    "texto": "O sea, la evaluación se hace observando, no con cronómetro."
+    "tipo": "hueco",
+    "id": "B9",
+    "habla": "Matías"
    },
    {
     "id": "t36",
@@ -327,7 +327,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B6",
+    "id": "B10",
     "habla": "Josefa"
    },
    {
@@ -337,7 +337,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B7",
+    "id": "B11",
     "habla": "Diego"
    },
    {
@@ -356,9 +356,9 @@ window.DATOS = {
     "texto": "Es lo que propone Gloria, la técnico; está en el tercer párrafo del caso. Cada semana se arman equipos distintos y así no pierden siempre los mismos."
    },
    {
-    "id": "t41",
-    "habla": "Diego",
-    "texto": "Entonces equipos distintos cada semana y sin copa del mes."
+    "tipo": "hueco",
+    "id": "B12",
+    "habla": "Diego"
    },
    {
     "id": "t42",
@@ -372,7 +372,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B8",
+    "id": "B13",
     "habla": "Antonia"
    },
    {
@@ -387,7 +387,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B9",
+    "id": "B14",
     "habla": "Josefa"
    },
    {
@@ -407,7 +407,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B10",
+    "id": "B15",
     "habla": "Matías"
    },
    {
@@ -416,9 +416,9 @@ window.DATOS = {
     "texto": "¿Qué tal una reunión con esas familias para explicarles los cambios antes de decidir nada? ¿Les parece?"
    },
    {
-    "id": "t50",
-    "habla": "Antonia",
-    "texto": "¿Y la reunión la haría la directora o Paula?"
+    "tipo": "hueco",
+    "id": "B16",
+    "habla": "Antonia"
    },
    {
     "tipo": "fase",
@@ -436,7 +436,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B11",
+    "id": "B17",
     "habla": "Diego"
    },
    {
@@ -451,7 +451,7 @@ window.DATOS = {
    },
    {
     "tipo": "hueco",
-    "id": "B12",
+    "id": "B18",
     "habla": "Josefa"
    },
    {

@@ -32,7 +32,7 @@
   <section data-panel="datos">
     <div class="card">
       <h1>Completa la conversación</h1>
-      <p>Vas a leer un caso y la conversación de un equipo de cuatro estudiantes que intenta resolverlo. En <b>12 momentos</b> la conversación queda abierta. En cada uno:</p>
+      <p>Vas a leer un caso y la conversación de un equipo de cuatro estudiantes que intenta resolverlo. En <b id="n-momentos">12 momentos</b> la conversación queda abierta. En cada uno:</p>
       <ol>
         <li>eliges el <b>operador</b> (S o N) que usarías en ese momento, y</li>
         <li>escribes <b>lo que diría</b> ese personaje, con tus palabras, de modo que la conversación pueda seguir.</li>
@@ -206,6 +206,7 @@
 
   // ---------- diálogo ----------
   $("presentacion").textContent = CASO.presentacion_dialogo;
+  $("n-momentos").textContent = HUECOS.length + " momentos";
   function opcionesSelect(sel) {
     sel.appendChild(el("option", { value: "", text: "Elige el operador…" }));
     ["S", "N"].forEach(function (dim) {
