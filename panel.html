@@ -36,6 +36,7 @@
 
   <section class="card">
     <div class="toolbar">
+      <label class="field"><span>Carrera</span><select id="f-carrera"></select></label>
       <label class="field"><span>Sesión</span><select id="f-sesion"></select></label>
       <label class="field"><span>Institución</span><select id="f-inst"></select></label>
       <label class="field"><span>Grupo</span><select id="f-grupo"></select></label>
@@ -53,7 +54,7 @@
     </section>
     <section class="card">
       <h2>Diversidad por estudiante</h2>
-      <p class="small muted">Cuántos operadores distintos usó cada estudiante en los 12 momentos (máximo 12).</p>
+      <p class="small muted">Cuántos operadores distintos usó cada estudiante en los 18 momentos (máximo 12).</p>
       <div id="g-div"></div>
       <h3 style="margin-top:16px">Por grupo</h3>
       <div class="table-scroll"><table class="dat" id="t-grupos"></table></div>
@@ -62,7 +63,7 @@
 
   <section class="card">
     <h2>Qué operador eligieron en cada momento</h2>
-    <p class="small muted">Filas: los 12 momentos abiertos de la conversación. Celdas: número de estudiantes que eligió cada operador. Pulsa una celda para leer esas respuestas.</p>
+    <p class="small muted">Filas: los momentos abiertos de la conversación de la carrera elegida. Celdas: número de estudiantes que eligió cada operador. Pulsa una celda para leer esas respuestas.</p>
     <div class="table-scroll" id="g-heat"></div>
   </section>
 
@@ -96,16 +97,19 @@
   var CFG = window.CONFIG, D = window.DATOS;
   var OPS = D.operadores.map(function (o) { return o.codigo; });
   var OPD = {}; D.operadores.forEach(function (o) { OPD[o.codigo] = o; });
-  var HUECOS = [], CONTEXTO = {};
-  (function () {
-    var prev = [], n = 0;
-    D.caso.dialogo.forEach(function (t) {
+  // Cada caso (carrera) tiene sus huecos; el id del hueco identifica el caso de cada fila.
+  var CASOS = {}, HN = {}, HUECO_CASO = {};
+  Object.keys(D.casos).forEach(function (cid) {
+    var prev = [], n = 0, huecos = [], contexto = {};
+    D.casos[cid].dialogo.forEach(function (t) {
       if (t.tipo === "fase") return;
-      if (t.tipo === "hueco") { n++; HUECOS.push({ id: t.id, n: n, habla: t.habla }); CONTEXTO[t.id] = prev.slice(-2); }
+      if (t.tipo === "hueco") { n++; huecos.push({ id: t.id, n: n, habla: t.habla }); contexto[t.id] = prev.slice(-2); }
       else prev.push(t);
     });
-  })();
-  var HN = {}; HUECOS.forEach(function (h) { HN[h.id] = h; });
+    CASOS[cid] = { huecos: huecos, contexto: contexto };
+    huecos.forEach(function (h) { HN[h.id] = h; HUECO_CASO[h.id] = cid; });
+  });
+  var HUECOS = [], CONTEXTO = {};
   var filas = [], filasImportadas = [], timer = null;
 
   function $(id) { return document.getElementById(id); }
@@ -181,14 +185,25 @@
     if (valores.indexOf(actual) > -1) sel.value = actual;
   }
   function unicos(campo) {
-    var s = {}; filas.forEach(function (f) { if (f[campo] !== "" && f[campo] != null) s[f[campo]] = 1; });
+    var s = {}; filasCarrera().forEach(function (f) { if (f[campo] !== "" && f[campo] != null) s[f[campo]] = 1; });
     return Object.keys(s).sort(function (a, b) { return a.localeCompare(b, "es", { numeric: true }); });
   }
   ["f-sesion", "f-inst", "f-grupo"].forEach(function (id) { $(id).addEventListener("change", render); });
+  function filasCarrera() { var c = $("f-carrera").value; return filas.filter(function (f) { return HUECO_CASO[f.hueco] === c; }); }
   function filtradas() {
     var s = $("f-sesion").value, i = $("f-inst").value, g = $("f-grupo").value;
-    return filas.filter(function (f) { return (!s || f.sesion === s) && (!i || f.institucion === i) && (!g || String(f.grupo) === g); });
+    return filasCarrera().filter(function (f) { return (!s || f.sesion === s) && (!i || f.institucion === i) && (!g || String(f.grupo) === g); });
   }
+  function usarCaso(cid) {
+    HUECOS = CASOS[cid].huecos; CONTEXTO = CASOS[cid].contexto;
+    var sh = $("l-hueco"); sh.innerHTML = "";
+    HUECOS.forEach(function (h) { sh.appendChild(el("option", { value: h.id, text: "Momento " + h.n + " · " + h.habla })); });
+  }
+  Object.keys(D.casos).forEach(function (cid) { $("f-carrera").appendChild(el("option", { value: cid, text: D.casos[cid].carrera })); });
+  $("f-carrera").value = leer("panelSN:carrera") || "ef";
+  if (!CASOS[$("f-carrera").value]) $("f-carrera").value = Object.keys(CASOS)[0];
+  usarCaso($("f-carrera").value);
+  $("f-carrera").addEventListener("change", function () { guardar("panelSN:carrera", this.value); usarCaso(this.value); render(); });
 
   // ---------- render ----------
   function render() {
@@ -323,7 +338,6 @@
   // ---------- lectura ----------
   (function () {
     var sh = $("l-hueco"), so = $("l-op");
-    HUECOS.forEach(function (h) { sh.appendChild(el("option", { value: h.id, text: "Momento " + h.n + " · " + h.habla })); });
     so.appendChild(el("option", { value: "", text: "Todos" }));
     OPS.forEach(function (o) { so.appendChild(el("option", { value: o, text: o + " · " + OPD[o].corto })); });
     sh.addEventListener("change", function () { lectura(filtradas()); });

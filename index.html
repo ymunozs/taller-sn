@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Taller S y N</title>
-<meta name="description" content="Caso “La tabla de puntos”: completa la conversación del equipo con operadores de las dimensiones S y N.">
+<meta name="description" content="Completa la conversación de un equipo de estudiantes de pedagogía con operadores de las dimensiones S y N.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f5d8a'/%3E%3Cpath d='M8 11h16v8H15l-5 4v-4H8z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="app.css">
 </head>
@@ -16,7 +16,7 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V21h16"/></svg>
     </button>
   </div>
-  <nav class="tabs" role="tablist" aria-label="Pasos">
+  <nav class="tabs hidden" id="tabs" role="tablist" aria-label="Pasos">
     <button class="tab" role="tab" data-tab="datos" aria-selected="true">1 · Tus datos</button>
     <button class="tab" role="tab" data-tab="caso" aria-selected="false">2 · El caso</button>
     <button class="tab" role="tab" data-tab="dialogo" aria-selected="false">3 · La conversación</button>
@@ -28,9 +28,19 @@
   <div id="banner-modo" class="banner warn hidden"></div>
   <div id="banner-pendiente" class="banner err hidden"></div>
 
-  <!-- 1. Datos -->
-  <section data-panel="datos">
+  <!-- 0. Carrera -->
+  <section data-panel="carrera" class="hidden">
     <div class="card">
+      <h1>¿Qué carrera estudias?</h1>
+      <p class="muted">Cada carrera trabaja con un caso distinto. Elige la tuya para comenzar.</p>
+      <div class="opciones-carrera" id="opciones-carrera"></div>
+    </div>
+  </section>
+
+  <!-- 1. Datos -->
+  <section data-panel="datos" class="hidden">
+    <div class="card">
+      <div class="carrera-actual small"><span>Carrera: <b id="carrera-nombre"></b></span><button class="btn ghost small" type="button" id="btn-cambiar-carrera">Cambiar</button></div>
       <h1>Completa la conversación</h1>
       <p>Vas a leer un caso y la conversación de un equipo de cuatro estudiantes que intenta resolverlo. En <b id="n-momentos">12 momentos</b> la conversación queda abierta. En cada uno:</p>
       <ol>
@@ -65,6 +75,7 @@
   <section data-panel="dialogo" class="hidden">
     <div class="card flat">
       <p id="presentacion" class="small"></p>
+      <details class="anexo encargo" id="encargo"></details>
       <div class="small muted" style="margin-bottom:6px">Operadores que has usado hasta ahora:</div>
       <div class="chips" id="chips-uso"></div>
     </div>
@@ -79,7 +90,7 @@
   </section>
 </main>
 
-<div class="progreso" id="progreso">
+<div class="progreso hidden" id="progreso">
   <div class="progreso-inner">
     <div class="txt">
       <div><b id="p-huecos">0/12</b> momentos completos · <b id="p-ops">0</b> operadores distintos</div>
@@ -105,9 +116,38 @@
 <script>
 (function () {
   "use strict";
-  var CFG = window.CONFIG, D = window.DATOS, CASO = D.caso;
+  var CFG = window.CONFIG, D = window.DATOS;
   var params = new URLSearchParams(location.search);
-  var SESION = params.get("s") || CFG.SESION;
+
+  // ---------- carrera: define el caso y la sesión ----------
+  var KEY_CARRERA = "tallerSN:carrera";
+  var CARRERA = params.get("c") || leer(KEY_CARRERA, "");
+  function elegirCarrera(id) {
+    if (id) { guardar(KEY_CARRERA, id); params.set("c", id); }
+    else { try { localStorage.removeItem(KEY_CARRERA); } catch (e) {} params.delete("c"); }
+    location.search = params.toString();
+  }
+  if (!D.casos[CARRERA]) {
+    var opciones = $("opciones-carrera");
+    Object.keys(D.casos).forEach(function (id) {
+      var c = D.casos[id];
+      var b = el("button", { class: "opcion-carrera", type: "button" }, [
+        el("b", { text: c.carrera }), el("span", { text: "Caso “" + c.titulo + "” · " + c.ficha.Nivel })
+      ]);
+      b.addEventListener("click", function () { elegirCarrera(id); });
+      opciones.appendChild(b);
+    });
+    document.querySelector('[data-panel="carrera"]').classList.remove("hidden");
+    return;
+  }
+  guardar(KEY_CARRERA, CARRERA);
+  var CASO = D.casos[CARRERA];
+  $("tabs").classList.remove("hidden");
+  $("progreso").classList.remove("hidden");
+  document.querySelector('[data-panel="datos"]').classList.remove("hidden");
+  $("carrera-nombre").textContent = CASO.carrera;
+  $("btn-cambiar-carrera").addEventListener("click", function () { elegirCarrera(""); });
+  var SESION = (params.get("s") || CFG.SESION) + (CASO.sufijo_sesion || "");
   var KEY = "tallerSN:v1:" + SESION;
   var KEY_PEND = "tallerSN:pendientes";
   var OPS = {}; D.operadores.forEach(function (o) { OPS[o.codigo] = o; });
@@ -139,7 +179,7 @@
   function $(id) { return document.getElementById(id); }
 
   // ---------- cabecera y modo ----------
-  $("sesion-label").textContent = "Sesión: " + SESION;
+  $("sesion-label").textContent = CASO.carrera + " · Sesión: " + SESION;
   if (!CFG.ENDPOINT) {
     var b = $("banner-modo");
     b.textContent = "Modo local: esta página aún no está conectada a la planilla del taller. Tus respuestas se guardan en este dispositivo y podrás descargarlas al final.";
@@ -182,10 +222,6 @@
     c.appendChild(ficha);
     c.appendChild(el("h2", { text: CASO.contexto_titulo }));
     CASO.contexto.forEach(function (p) { c.appendChild(el("p", { text: p })); });
-    var ol = el("ol", { class: "preguntas" });
-    CASO.preguntas.forEach(function (q) { ol.appendChild(el("li", { text: q })); });
-    c.appendChild(ol);
-    c.appendChild(el("p", { html: "<b>" + CASO.consigna_informe + "</b>" }));
     c.appendChild(el("h2", { text: "Anexos", style: "margin-top:18px" }));
     CASO.anexos.forEach(function (a) {
       var d = el("details", { class: "anexo" }), body = el("div");
@@ -206,6 +242,15 @@
 
   // ---------- diálogo ----------
   $("presentacion").textContent = CASO.presentacion_dialogo;
+  (function renderEncargo() {
+    var d = $("encargo"), ol = el("ol");
+    d.appendChild(el("summary", { text: "Lo que la profesora le pidió a este equipo" }));
+    CASO.preguntas.forEach(function (q) { ol.appendChild(el("li", { text: q })); });
+    d.appendChild(el("div", null, [
+      el("p", { class: "small muted", text: "Es el encargo de los personajes, para que entiendas de qué hablan. Tú no lo respondes: tu tarea son los momentos abiertos de la conversación." }),
+      ol, el("p", { class: "small", text: CASO.consigna_informe })
+    ]));
+  })();
   $("n-momentos").textContent = HUECOS.length + " momentos";
   function opcionesSelect(sel) {
     sel.appendChild(el("option", { value: "", text: "Elige el operador…" }));
@@ -328,7 +373,7 @@
   }
   function payload() {
     return {
-      id: estado.id, version: CASO.version || "", sesion: SESION,
+      id: estado.id, version: CASO.version || "", sesion: SESION, carrera: CARRERA,
       institucion: estado.datos.institucion, grupo: estado.datos.grupo, estudiante: estado.datos.nombre,
       inicio: estado.inicio, envio: new Date().toISOString(),
       respuestas: HUECOS.map(function (h) {
