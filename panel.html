@@ -39,7 +39,7 @@
       <label class="field"><span>Carrera</span><select id="f-carrera"></select></label>
       <label class="field"><span>Sesión</span><select id="f-sesion"></select></label>
       <label class="field"><span>Institución</span><select id="f-inst"></select></label>
-      <label class="field"><span>Grupo</span><select id="f-grupo"></select></label>
+      <label class="field"><span>Grupo (integrantes)</span><select id="f-grupo"></select></label>
     </div>
   </section>
 
@@ -53,8 +53,8 @@
       <div id="g-dist"></div>
     </section>
     <section class="card">
-      <h2>Diversidad por estudiante</h2>
-      <p class="small muted">Cuántos operadores distintos usó cada estudiante en los 18 momentos (máximo 12).</p>
+      <h2>Diversidad por grupo</h2>
+      <p class="small muted">Cuántos operadores distintos usó cada grupo en los 18 momentos (máximo 12).</p>
       <div id="g-div"></div>
       <h3 style="margin-top:16px">Por grupo</h3>
       <div class="table-scroll"><table class="dat" id="t-grupos"></table></div>
@@ -63,7 +63,7 @@
 
   <section class="card">
     <h2>Qué operador eligieron en cada momento</h2>
-    <p class="small muted">Filas: los momentos abiertos de la conversación de la carrera elegida. Celdas: número de estudiantes que eligió cada operador. Pulsa una celda para leer esas respuestas.</p>
+    <p class="small muted">Filas: los momentos abiertos de la conversación de la carrera elegida. Celdas: número de grupos que eligió cada operador. Pulsa una celda para leer esas respuestas.</p>
     <div class="table-scroll" id="g-heat"></div>
   </section>
 
@@ -134,7 +134,7 @@
   function cargar() {
     var url = $("c-endpoint").value.trim(), clave = $("c-clave").value;
     guardar("panelSN:endpoint", url); guardar("panelSN:clave", clave);
-    if (!url) { aviso("Falta la URL de la planilla. Mientras tanto puedes importar archivos .json descargados por los estudiantes.", "warn"); return; }
+    if (!url) { aviso("Falta la URL de la planilla. Mientras tanto puedes importar archivos .json descargados por los grupos.", "warn"); return; }
     $("estado-carga").textContent = "Cargando…";
     fetch(url + (url.indexOf("?") > -1 ? "&" : "?") + "clave=" + encodeURIComponent(clave) + "&t=" + Date.now())
       .then(function (r) { return r.json(); })
@@ -143,7 +143,7 @@
         if (!j.filas) { aviso("La planilla responde, pero la clave no es correcta.", "err"); $("estado-carga").textContent = "Clave incorrecta"; return; }
         filas = j.filas.concat(filasImportadas);
         $("msg").className = "banner hidden";
-        $("estado-carga").textContent = "Actualizado " + new Date().toLocaleTimeString("es-CL") + " · " + contarEnvios(filas) + " estudiantes";
+        $("estado-carga").textContent = "Actualizado " + new Date().toLocaleTimeString("es-CL") + " · " + contarEnvios(filas) + " grupos";
         render();
       })
       .catch(function (e) { aviso("No se pudo leer la planilla: " + e.message, "err"); $("estado-carga").textContent = "Error de carga"; });
@@ -169,7 +169,7 @@
         nuevas = nuevas.filter(function (f) { return !ids[f.envio_id + f.hueco]; });
         filasImportadas = filasImportadas.concat(nuevas); filas = filas.concat(nuevas);
         aviso("Importadas " + contarEnvios(nuevas) + " respuestas desde archivos.", "ok");
-        $("estado-carga").textContent = contarEnvios(filas) + " estudiantes";
+        $("estado-carga").textContent = contarEnvios(filas) + " grupos";
         render();
       });
     this.value = "";
@@ -192,7 +192,7 @@
   function filasCarrera() { var c = $("f-carrera").value; return filas.filter(function (f) { return HUECO_CASO[f.hueco] === c; }); }
   function filtradas() {
     var s = $("f-sesion").value, i = $("f-inst").value, g = $("f-grupo").value;
-    return filasCarrera().filter(function (f) { return (!s || f.sesion === s) && (!i || f.institucion === i) && (!g || String(f.grupo) === g); });
+    return filasCarrera().filter(function (f) { return (!s || f.sesion === s) && (!i || f.institucion === i) && (!g || f.estudiante === g); });
   }
   function usarCaso(cid) {
     HUECOS = CASOS[cid].huecos; CONTEXTO = CASOS[cid].contexto;
@@ -209,7 +209,7 @@
   function render() {
     opciones($("f-sesion"), unicos("sesion"), "Todas");
     opciones($("f-inst"), unicos("institucion"), "Todas");
-    opciones($("f-grupo"), unicos("grupo"), "Todos");
+    opciones($("f-grupo"), unicos("estudiante"), "Todos");
     var fs = filtradas();
     kpis(fs); distribucion(fs); diversidad(fs); grupos(fs); heat(fs); lectura(fs);
   }
@@ -217,7 +217,7 @@
   function porEstudiante(fs) {
     var m = {};
     fs.forEach(function (f) {
-      var e = m[f.envio_id] || (m[f.envio_id] = { ops: {}, grupo: f.grupo, institucion: f.institucion, n: 0 });
+      var e = m[f.envio_id] || (m[f.envio_id] = { ops: {}, nombres: f.estudiante || "", institucion: f.institucion, n: 0 });
       e.ops[f.operador] = 1; e.n++;
     });
     return m;
@@ -225,12 +225,12 @@
 
   function kpis(fs) {
     var est = porEstudiante(fs), ids = Object.keys(est);
-    var grp = {}; ids.forEach(function (k) { grp[est[k].institucion + "·" + est[k].grupo] = 1; });
+    var personas = 0; ids.forEach(function (k) { personas += est[k].nombres.split(",").filter(function (x) { return x.trim(); }).length; });
     var prom = ids.length ? ids.reduce(function (a, k) { return a + Object.keys(est[k].ops).length; }, 0) / ids.length : 0;
     var s = fs.filter(function (f) { return f.dimension === "S"; }).length;
     var k = $("kpis"); k.innerHTML = "";
-    [[ids.length, "estudiantes"], [Object.keys(grp).length, "grupos"],
-     [prom ? prom.toLocaleString("es-CL", { maximumFractionDigits: 1 }) : "0", "operadores distintos por estudiante (de 12)"],
+    [[ids.length, "grupos"], [personas, "integrantes"],
+     [prom ? prom.toLocaleString("es-CL", { maximumFractionDigits: 1 }) : "0", "operadores distintos por grupo (de 12)"],
      [fs.length ? pct(s / fs.length) : "0 %", "de respuestas en S (equipo de referencia: " + pct(33 / 98) + ")"]
     ].forEach(function (x) { k.appendChild(el("div", { class: "kpi" }, [el("b", { text: String(x[0]) }), el("span", { text: x[1] })])); });
   }
@@ -275,12 +275,12 @@
     Object.keys(est).forEach(function (k) { var n = Object.keys(est[k].ops).length; h[n] = (h[n] || 0) + 1; });
     var max = Math.max.apply(null, Object.keys(h).map(function (k) { return h[k]; }).concat([1]));
     var W = 520, H = 170, bw = (W - 20) / 12;
-    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img", "aria-label": "Histograma de operadores distintos por estudiante" });
+    var s = svg("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img", "aria-label": "Histograma de operadores distintos por grupo" });
     s.appendChild(svg("line", { x1: 10, x2: W - 10, y1: H - 22, y2: H - 22, stroke: "var(--line)" }));
     for (var n = 1; n <= 12; n++) {
       var alto = (H - 50) * h[n] / max, x = 10 + (n - 1) * bw;
       var r = svg("rect", { x: x + 4, y: H - 22 - alto, width: bw - 8, height: Math.max(alto, h[n] ? 2 : 0), rx: 3, fill: "var(--accent)" });
-      conTip(r, h[n] + " estudiante(s) usaron " + n + " operador(es) distinto(s)");
+      conTip(r, h[n] + " grupo(s) usaron " + n + " operador(es) distinto(s)");
       s.appendChild(r);
       var t = svg("text", { x: x + bw / 2, y: H - 6, "text-anchor": "middle" }); t.textContent = n; s.appendChild(t);
       if (h[n]) { var v = svg("text", { x: x + bw / 2, y: H - 26 - alto, "text-anchor": "middle" }); v.textContent = h[n]; s.appendChild(v); }
@@ -291,17 +291,17 @@
   function grupos(fs) {
     var m = {};
     fs.forEach(function (f) {
-      var k = f.institucion + " · G" + f.grupo;
-      var g = m[k] || (m[k] = { est: {}, ops: {}, s: 0, n: 0 });
+      var k = f.envio_id;
+      var g = m[k] || (m[k] = { nombre: (f.estudiante || "Sin nombres") + " · " + f.institucion, est: {}, ops: {}, s: 0, n: 0 });
       g.est[f.envio_id] = 1; g.ops[f.operador] = 1; g.n++; if (f.dimension === "S") g.s++;
     });
     var t = $("t-grupos"); t.innerHTML = "";
-    var hr = el("tr"); ["Grupo", "Estudiantes", "Operadores distintos (grupo)", "% S"].forEach(function (h) { hr.appendChild(el("th", { text: h })); });
+    var hr = el("tr"); ["Grupo (integrantes)", "Envíos", "Operadores distintos", "% S"].forEach(function (h) { hr.appendChild(el("th", { text: h })); });
     t.appendChild(el("thead", null, [hr]));
     var tb = el("tbody");
-    Object.keys(m).sort(function (a, b) { return a.localeCompare(b, "es", { numeric: true }); }).forEach(function (k) {
+    Object.keys(m).sort(function (a, b) { return m[a].nombre.localeCompare(m[b].nombre, "es", { numeric: true }); }).forEach(function (k) {
       var g = m[k], tr = el("tr");
-      [k, Object.keys(g.est).length, Object.keys(g.ops).length + " de 12", pct(g.s / g.n)].forEach(function (v) { tr.appendChild(el("td", { text: String(v) })); });
+      [g.nombre, Object.keys(g.est).length, Object.keys(g.ops).length + " de 12", pct(g.s / g.n)].forEach(function (v) { tr.appendChild(el("td", { text: String(v) })); });
       tb.appendChild(tr);
     });
     if (!Object.keys(m).length) tb.appendChild(el("tr", null, [el("td", { colspan: "4", class: "muted", text: "Sin respuestas todavía." })]));
@@ -348,7 +348,7 @@
     var ctx = $("l-contexto"); ctx.innerHTML = "";
     ctx.appendChild(el("div", { class: "muted", text: "Lo que se dijo justo antes:" }));
     (CONTEXTO[h] || []).forEach(function (t) { ctx.appendChild(el("div", null, [el("b", { text: t.habla + ": " }), t.texto])); });
-    ctx.appendChild(el("div", { class: "muted", style: "margin-top:4px", text: "Luego habla " + HN[h].habla + " (respuesta del estudiante)." }));
+    ctx.appendChild(el("div", { class: "muted", style: "margin-top:4px", text: "Luego habla " + HN[h].habla + " (respuesta del grupo)." }));
     var lista = $("l-lista"); lista.innerHTML = "";
     var sel = fs.filter(function (f) { return f.hueco === h && (!o || f.operador === o); });
     if (!sel.length) { lista.appendChild(el("p", { class: "muted", text: "No hay respuestas con estos filtros." })); return; }
@@ -356,7 +356,7 @@
       var d = OPD[f.operador] || { dim: "", codigo: f.operador };
       lista.appendChild(el("div", { class: "resp-item" }, [
         el("span", { class: "chip tag " + d.dim, text: f.operador }),
-        el("div", null, [el("div", { text: f.texto }), el("div", { class: "meta", text: f.estudiante + " · " + f.institucion + " · Grupo " + f.grupo })])
+        el("div", null, [el("div", { text: f.texto }), el("div", { class: "meta", text: f.estudiante + " · " + f.institucion })])
       ]));
     });
   }

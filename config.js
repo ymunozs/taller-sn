@@ -8,6 +8,5 @@ window.CONFIG = {
   URL_PUBLICA: "https://ymunozs.github.io/taller-sn/",
   SESION: "Taller2-SN-2026-18m",
   INSTITUCIONES: ["UST", "UAndes"],
-  GRUPOS: 10,
   MIN_CARACTERES: 10
 };

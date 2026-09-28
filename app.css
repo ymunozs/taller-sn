@@ -88,8 +88,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.ghost { background: transparent; }
 .icon-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; width: 40px; height: 40px; cursor: pointer; display: grid; place-items: center; }
 
-label.field { display: block; margin-bottom: 14px; }
-label.field > span { display: block; font-size: .88rem; font-weight: 600; margin-bottom: 6px; }
+label.field, div.field { display: block; margin-bottom: 14px; }
+label.field > span, div.field > span { display: block; font-size: .88rem; font-weight: 600; margin-bottom: 6px; }
 input[type=text], input[type=password], input[type=url], select, textarea {
   width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 12px; min-height: 44px;
 }
@@ -202,3 +202,4 @@ svg text { fill: var(--ink-2); font-size: 11px; font-family: inherit; }
 .carrera-actual { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 8px; color: var(--ink-2); }
 .carrera-actual .btn { padding: 4px 10px; }
 .encargo { margin-bottom: 12px; }
+#integrantes { display: grid; gap: 6px; margin-bottom: 8px; }

@@ -17,7 +17,7 @@
     </button>
   </div>
   <nav class="tabs hidden" id="tabs" role="tablist" aria-label="Pasos">
-    <button class="tab" role="tab" data-tab="datos" aria-selected="true">1 · Tus datos</button>
+    <button class="tab" role="tab" data-tab="datos" aria-selected="true">1 · Tu grupo</button>
     <button class="tab" role="tab" data-tab="caso" aria-selected="false">2 · El caso</button>
     <button class="tab" role="tab" data-tab="dialogo" aria-selected="false">3 · La conversación</button>
     <button class="tab" role="tab" data-tab="enviar" aria-selected="false">4 · Enviar</button>
@@ -42,25 +42,24 @@
     <div class="card">
       <div class="carrera-actual small"><span>Carrera: <b id="carrera-nombre"></b></span><button class="btn ghost small" type="button" id="btn-cambiar-carrera">Cambiar</button></div>
       <h1>Completa la conversación</h1>
-      <p>Vas a leer un caso y la conversación de un equipo de cuatro estudiantes que intenta resolverlo. En <b id="n-momentos">12 momentos</b> la conversación queda abierta. En cada uno:</p>
+      <p>Van a leer un caso y la conversación de un equipo de cuatro estudiantes que intenta resolverlo. En <b id="n-momentos">12 momentos</b> la conversación queda abierta. En cada uno:</p>
       <ol>
-        <li>eliges el <b>operador</b> (S o N) que usarías en ese momento, y</li>
-        <li>escribes <b>lo que diría</b> ese personaje, con tus palabras, de modo que la conversación pueda seguir.</li>
+        <li>eligen el <b>operador</b> (S o N) que usarían en ese momento, y</li>
+        <li>escriben <b>lo que diría</b> ese personaje, con sus palabras, de modo que la conversación pueda seguir.</li>
       </ol>
-      <p class="muted small">No hay una única respuesta correcta: en casi todos los momentos caben varios operadores. Intenta usar operadores distintos a lo largo de la conversación.</p>
+      <p class="muted small">No hay una única respuesta correcta: en casi todos los momentos caben varios operadores. Intenten usar operadores distintos a lo largo de la conversación.</p>
     </div>
     <div class="card">
-      <h2>Tus datos</h2>
-      <label class="field"><span>Nombre y apellido</span>
-        <input type="text" id="f-nombre" autocomplete="name" maxlength="80" placeholder="Ej.: Camila Rojas">
-      </label>
+      <h2>Tu grupo</h2>
+      <p class="small muted">El grupo responde una sola vez, desde un solo dispositivo.</p>
+      <div class="field"><span>Integrantes (nombre y apellido)</span>
+        <div id="integrantes"></div>
+        <button class="btn ghost small" type="button" id="btn-integrante">+ Agregar integrante</button>
+      </div>
       <label class="field"><span>Institución</span>
         <select id="f-institucion"></select>
       </label>
-      <label class="field"><span>Grupo</span>
-        <select id="f-grupo"></select>
-      </label>
-      <p class="muted small">Tus respuestas quedan registradas para el equipo del taller, junto con tu nombre y grupo.</p>
+      <p class="muted small">Las respuestas quedan registradas para el equipo del taller, junto con los nombres de los integrantes.</p>
       <button class="btn primary block" type="button" data-go="caso">Continuar al caso</button>
     </div>
   </section>
@@ -148,7 +147,7 @@
   $("carrera-nombre").textContent = CASO.carrera;
   $("btn-cambiar-carrera").addEventListener("click", function () { elegirCarrera(""); });
   var SESION = (params.get("s") || CFG.SESION) + (CASO.sufijo_sesion || "");
-  var KEY = "tallerSN:v1:" + SESION;
+  var KEY = "tallerSN:v2:" + SESION;
   var KEY_PEND = "tallerSN:pendientes";
   var OPS = {}; D.operadores.forEach(function (o) { OPS[o.codigo] = o; });
   var HUECOS = CASO.dialogo.filter(function (t) { return t.tipo === "hueco"; });
@@ -182,7 +181,7 @@
   $("sesion-label").textContent = CASO.carrera + " · Sesión: " + SESION;
   if (!CFG.ENDPOINT) {
     var b = $("banner-modo");
-    b.textContent = "Modo local: esta página aún no está conectada a la planilla del taller. Tus respuestas se guardan en este dispositivo y podrás descargarlas al final.";
+    b.textContent = "Modo local: esta página aún no está conectada a la planilla del taller. Sus respuestas se guardan en este dispositivo y podrás descargarlas al final.";
     b.classList.remove("hidden");
   }
 
@@ -197,20 +196,31 @@
   document.querySelectorAll("[data-go]").forEach(function (b) { b.addEventListener("click", function () { irA(b.dataset.go); }); });
 
   // ---------- datos personales ----------
-  var fN = $("f-nombre"), fI = $("f-institucion"), fG = $("f-grupo");
+  var fI = $("f-institucion"), cajaInt = $("integrantes"), MAX_INT = 8;
   fI.appendChild(el("option", { value: "", text: "Elige…" }));
   CFG.INSTITUCIONES.forEach(function (i) { fI.appendChild(el("option", { value: i, text: i })); });
   fI.appendChild(el("option", { value: "Otra", text: "Otra" }));
-  fG.appendChild(el("option", { value: "", text: "Elige…" }));
-  for (var g = 1; g <= CFG.GRUPOS; g++) fG.appendChild(el("option", { value: String(g), text: "Grupo " + g }));
   if (!estado.datos.institucion && params.get("i")) estado.datos.institucion = params.get("i");
-  if (!estado.datos.grupo && params.get("g")) estado.datos.grupo = params.get("g");
-  fN.value = estado.datos.nombre || ""; fI.value = estado.datos.institucion || ""; fG.value = estado.datos.grupo || "";
-  [fN, fI, fG].forEach(function (f) {
-    f.addEventListener("input", function () {
-      estado.datos = { nombre: fN.value.trim(), institucion: fI.value, grupo: fG.value }; persistir();
-    });
-  });
+  fI.value = estado.datos.institucion || "";
+  function integrantes() { return (estado.datos.integrantes || []).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function guardarDatos() {
+    estado.datos = { institucion: fI.value,
+      integrantes: Array.prototype.map.call(cajaInt.querySelectorAll("input"), function (i) { return i.value; }) };
+    persistir();
+  }
+  function campoIntegrante(valor) {
+    var n = cajaInt.children.length + 1;
+    var inp = el("input", { type: "text", maxlength: "60", autocomplete: "off", placeholder: "Integrante " + n, "aria-label": "Integrante " + n });
+    inp.value = valor || "";
+    inp.addEventListener("input", guardarDatos);
+    cajaInt.appendChild(inp);
+    $("btn-integrante").classList.toggle("hidden", cajaInt.children.length >= MAX_INT);
+    return inp;
+  }
+  var previos = estado.datos.integrantes || [];
+  for (var k = 0; k < Math.max(3, previos.length); k++) campoIntegrante(previos[k]);
+  $("btn-integrante").addEventListener("click", function () { campoIntegrante("").focus(); });
+  fI.addEventListener("input", guardarDatos);
 
   // ---------- caso ----------
   (function renderCaso() {
@@ -359,9 +369,8 @@
   // ---------- revisión y envío ----------
   function faltantes() {
     var f = [];
-    if (!estado.datos.nombre) f.push({ t: "Tu nombre", go: "datos" });
-    if (!estado.datos.institucion) f.push({ t: "Tu institución", go: "datos" });
-    if (!estado.datos.grupo) f.push({ t: "Tu grupo", go: "datos" });
+    if (!integrantes().length) f.push({ t: "Los nombres de los integrantes del grupo", go: "datos" });
+    if (!estado.datos.institucion) f.push({ t: "La institución", go: "datos" });
     HUECOS.forEach(function (h) {
       if (!completo(h.id)) {
         var r = estado.resp[h.id] || {}, nd = nodosHueco[h.id];
@@ -374,7 +383,7 @@
   function payload() {
     return {
       id: estado.id, version: CASO.version || "", sesion: SESION, carrera: CARRERA,
-      institucion: estado.datos.institucion, grupo: estado.datos.grupo, estudiante: estado.datos.nombre,
+      institucion: estado.datos.institucion, grupo: "", estudiante: integrantes().join(", "), integrantes: integrantes(),
       inicio: estado.inicio, envio: new Date().toISOString(),
       respuestas: HUECOS.map(function (h) {
         var r = estado.resp[h.id];
@@ -388,7 +397,7 @@
     document.body.appendChild(a); a.click(); a.remove();
   }
   function nombreArchivo(p) {
-    return "respuesta_" + (p.institucion || "") + "_G" + (p.grupo || "") + "_" + (p.estudiante || "").replace(/[^\wÁÉÍÓÚÑáéíóúñ]+/g, "-") + ".json";
+    return "respuesta_" + (p.institucion || "") + "_" + (p.estudiante || "").replace(/[^\wÁÉÍÓÚÑáéíóúñ]+/g, "-") + ".json";
   }
 
   function renderRevision() {
@@ -443,7 +452,7 @@
       agregarPendiente(p);
       btn.disabled = false; btn.textContent = "Reintentar el envío";
       msg.className = "banner err";
-      msg.textContent = "No se pudo enviar (¿sin conexión?). Tus respuestas quedaron guardadas en este dispositivo: reintenta en un momento, o descárgalas y entrégaselas al equipo del taller.";
+      msg.textContent = "No se pudo enviar (¿sin conexión?). Sus respuestas quedaron guardadas en este dispositivo: reintenta en un momento, o descárgalas y entrégaselas al equipo del taller.";
       if (!$("btn-desc-fallo")) {
         var d = el("button", { class: "btn block", type: "button", id: "btn-desc-fallo", style: "margin-top:8px", text: "Descargar mis respuestas" });
         d.addEventListener("click", function () { descargar(estado.ultimoPayload, nombreArchivo(estado.ultimoPayload)); });
@@ -484,17 +493,17 @@
     var ex = $("exito"); ex.classList.remove("hidden"); ex.innerHTML = "";
     var modo = estado.enviado.modo;
     ex.appendChild(el("h2", { text: modo === "local" ? "Respuestas guardadas" : "¡Respuestas enviadas!" }));
-    var txt = { confirmado: "El equipo del taller ya tiene tus respuestas. Gracias.",
-      "sin-confirmacion": "Tus respuestas se enviaron. El servidor no devolvió confirmación, así que conviene avisar al equipo del taller si algo no aparece.",
-      local: "Se descargó un archivo con tus respuestas. Entrégaselo al equipo del taller." }[modo];
+    var txt = { confirmado: "El equipo del taller ya tiene sus respuestas. Gracias.",
+      "sin-confirmacion": "Sus respuestas se enviaron. El servidor no devolvió confirmación, así que conviene avisar al equipo del taller si algo no aparece.",
+      local: "Se descargó un archivo con sus respuestas. Entrégaselo al equipo del taller." }[modo];
     ex.appendChild(el("p", { text: txt }));
     ex.appendChild(el("p", { class: "small muted", text: "Registro: " + estado.id.slice(0, 8) + " · " + new Date(estado.enviado.fecha).toLocaleString("es-CL") }));
     var d = el("button", { class: "btn block", type: "button", text: "Descargar una copia", style: "margin-bottom:8px" });
     d.addEventListener("click", function () { var p = estado.ultimoPayload || payload(); descargar(p, nombreArchivo(p)); });
-    var nuevo = el("button", { class: "btn ghost block", type: "button", text: "Empezar de nuevo (otra persona en este dispositivo)" });
+    var nuevo = el("button", { class: "btn ghost block", type: "button", text: "Empezar de nuevo (otro grupo en este dispositivo)" });
     nuevo.addEventListener("click", function () {
-      var inst = estado.datos.institucion, grp = estado.datos.grupo;
-      estado = nuevoEstado(); estado.datos = { institucion: inst, grupo: grp }; persistir(); location.reload();
+      var inst = estado.datos.institucion;
+      estado = nuevoEstado(); estado.datos = { institucion: inst }; persistir(); location.reload();
     });
     ex.appendChild(d); ex.appendChild(nuevo);
   }
