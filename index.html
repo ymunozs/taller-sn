@@ -6,7 +6,7 @@
 <title>Taller S y N</title>
 <meta name="description" content="Completa la conversación de un equipo de estudiantes de pedagogía con operadores de las dimensiones S y N.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f5d8a'/%3E%3Cpath d='M8 11h16v8H15l-5 4v-4H8z' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=20260928c">
 </head>
 <body>
 <header class="topbar">
@@ -28,11 +28,11 @@
   <div id="banner-modo" class="banner warn hidden"></div>
   <div id="banner-pendiente" class="banner err hidden"></div>
 
-  <!-- 0. Carrera -->
+  <!-- 0. Institución: define el caso -->
   <section data-panel="carrera" class="hidden">
     <div class="card">
-      <h1>¿Qué carrera estudias?</h1>
-      <p class="muted">Cada carrera trabaja con un caso distinto. Elige la tuya para comenzar.</p>
+      <h1>¿En qué universidad estudian?</h1>
+      <p class="muted">Cada universidad trabaja con un caso distinto. Elijan la suya para comenzar.</p>
       <div class="opciones-carrera" id="opciones-carrera"></div>
     </div>
   </section>
@@ -40,7 +40,7 @@
   <!-- 1. Datos -->
   <section data-panel="datos" class="hidden">
     <div class="card">
-      <div class="carrera-actual small"><span>Carrera: <b id="carrera-nombre"></b></span><button class="btn ghost small" type="button" id="btn-cambiar-carrera">Cambiar</button></div>
+      <div class="carrera-actual small"><span><b id="carrera-nombre"></b></span><button class="btn ghost small" type="button" id="btn-cambiar-carrera">Cambiar</button></div>
       <h1>Completa la conversación</h1>
       <p>Van a leer un caso y la conversación de un equipo de cuatro estudiantes que intenta resolverlo. En <b id="n-momentos">12 momentos</b> la conversación queda abierta. En cada uno:</p>
       <ol>
@@ -56,9 +56,6 @@
         <div id="integrantes"></div>
         <button class="btn ghost small" type="button" id="btn-integrante">+ Agregar integrante</button>
       </div>
-      <label class="field"><span>Institución</span>
-        <select id="f-institucion"></select>
-      </label>
       <p class="muted small">Las respuestas quedan registradas para el equipo del taller, junto con los nombres de los integrantes.</p>
       <button class="btn primary block" type="button" data-go="caso">Continuar al caso</button>
     </div>
@@ -110,42 +107,44 @@
   </div>
 </div>
 
-<script src="config.js"></script>
-<script src="datos.js"></script>
+<script src="config.js?v=20260928c"></script>
+<script src="datos.js?v=20260928c"></script>
 <script>
 (function () {
   "use strict";
   var CFG = window.CONFIG, D = window.DATOS;
   var params = new URLSearchParams(location.search);
 
-  // ---------- carrera: define el caso y la sesión ----------
-  var KEY_CARRERA = "tallerSN:carrera";
-  var CARRERA = params.get("c") || leer(KEY_CARRERA, "");
-  function elegirCarrera(id) {
-    if (id) { guardar(KEY_CARRERA, id); params.set("c", id); }
-    else { try { localStorage.removeItem(KEY_CARRERA); } catch (e) {} params.delete("c"); }
+  // ---------- institución: define la carrera, el caso y la sesión ----------
+  var KEY_INST = "tallerSN:institucion";
+  function buscarInst(id) { return CFG.INSTITUCIONES.filter(function (x) { return x.id === id; })[0]; }
+  var INST = buscarInst(params.get("i")) || buscarInst(leer(KEY_INST, ""));
+  function elegirInst(id) {
+    if (id) { guardar(KEY_INST, id); params.set("i", id); }
+    else { try { localStorage.removeItem(KEY_INST); } catch (e) {} params.delete("i"); }
+    params.delete("c");
     location.search = params.toString();
   }
-  if (!D.casos[CARRERA]) {
+  if (!INST || !D.casos[INST.caso]) {
     var opciones = $("opciones-carrera");
-    Object.keys(D.casos).forEach(function (id) {
-      var c = D.casos[id];
+    CFG.INSTITUCIONES.forEach(function (x) {
+      var c = D.casos[x.caso];
       var b = el("button", { class: "opcion-carrera", type: "button" }, [
-        el("b", { text: c.carrera }), el("span", { text: "Caso “" + c.titulo + "” · " + c.ficha.Nivel })
+        el("b", { text: x.nombre }), el("span", { text: "Pedagogía en " + c.carrera + " · caso “" + c.titulo + "”" })
       ]);
-      b.addEventListener("click", function () { elegirCarrera(id); });
+      b.addEventListener("click", function () { elegirInst(x.id); });
       opciones.appendChild(b);
     });
     document.querySelector('[data-panel="carrera"]').classList.remove("hidden");
     return;
   }
-  guardar(KEY_CARRERA, CARRERA);
-  var CASO = D.casos[CARRERA];
+  guardar(KEY_INST, INST.id);
+  var CARRERA = INST.caso, CASO = D.casos[CARRERA];
   $("tabs").classList.remove("hidden");
   $("progreso").classList.remove("hidden");
   document.querySelector('[data-panel="datos"]').classList.remove("hidden");
-  $("carrera-nombre").textContent = CASO.carrera;
-  $("btn-cambiar-carrera").addEventListener("click", function () { elegirCarrera(""); });
+  $("carrera-nombre").textContent = INST.nombre + " · " + CASO.carrera;
+  $("btn-cambiar-carrera").addEventListener("click", function () { elegirInst(""); });
   var SESION = (params.get("s") || CFG.SESION) + (CASO.sufijo_sesion || "");
   var KEY = "tallerSN:v2:" + SESION;
   var KEY_PEND = "tallerSN:pendientes";
@@ -178,7 +177,7 @@
   function $(id) { return document.getElementById(id); }
 
   // ---------- cabecera y modo ----------
-  $("sesion-label").textContent = CASO.carrera + " · Sesión: " + SESION;
+  $("sesion-label").textContent = INST.id + " · " + CASO.carrera + " · Sesión: " + SESION;
   if (!CFG.ENDPOINT) {
     var b = $("banner-modo");
     b.textContent = "Modo local: esta página aún no está conectada a la planilla del taller. Sus respuestas se guardan en este dispositivo y podrás descargarlas al final.";
@@ -196,15 +195,10 @@
   document.querySelectorAll("[data-go]").forEach(function (b) { b.addEventListener("click", function () { irA(b.dataset.go); }); });
 
   // ---------- datos personales ----------
-  var fI = $("f-institucion"), cajaInt = $("integrantes"), MAX_INT = 8;
-  fI.appendChild(el("option", { value: "", text: "Elige…" }));
-  CFG.INSTITUCIONES.forEach(function (i) { fI.appendChild(el("option", { value: i, text: i })); });
-  fI.appendChild(el("option", { value: "Otra", text: "Otra" }));
-  if (!estado.datos.institucion && params.get("i")) estado.datos.institucion = params.get("i");
-  fI.value = estado.datos.institucion || "";
+  var cajaInt = $("integrantes"), MAX_INT = 8;
   function integrantes() { return (estado.datos.integrantes || []).map(function (x) { return x.trim(); }).filter(Boolean); }
   function guardarDatos() {
-    estado.datos = { institucion: fI.value,
+    estado.datos = {
       integrantes: Array.prototype.map.call(cajaInt.querySelectorAll("input"), function (i) { return i.value; }) };
     persistir();
   }
@@ -220,7 +214,6 @@
   var previos = estado.datos.integrantes || [];
   for (var k = 0; k < Math.max(3, previos.length); k++) campoIntegrante(previos[k]);
   $("btn-integrante").addEventListener("click", function () { campoIntegrante("").focus(); });
-  fI.addEventListener("input", guardarDatos);
 
   // ---------- caso ----------
   (function renderCaso() {
@@ -370,7 +363,6 @@
   function faltantes() {
     var f = [];
     if (!integrantes().length) f.push({ t: "Los nombres de los integrantes del grupo", go: "datos" });
-    if (!estado.datos.institucion) f.push({ t: "La institución", go: "datos" });
     HUECOS.forEach(function (h) {
       if (!completo(h.id)) {
         var r = estado.resp[h.id] || {}, nd = nodosHueco[h.id];
@@ -383,7 +375,7 @@
   function payload() {
     return {
       id: estado.id, version: CASO.version || "", sesion: SESION, carrera: CARRERA,
-      institucion: estado.datos.institucion, grupo: "", estudiante: integrantes().join(", "), integrantes: integrantes(),
+      institucion: INST.id, grupo: "", estudiante: integrantes().join(", "), integrantes: integrantes(),
       inicio: estado.inicio, envio: new Date().toISOString(),
       respuestas: HUECOS.map(function (h) {
         var r = estado.resp[h.id];
@@ -502,8 +494,7 @@
     d.addEventListener("click", function () { var p = estado.ultimoPayload || payload(); descargar(p, nombreArchivo(p)); });
     var nuevo = el("button", { class: "btn ghost block", type: "button", text: "Empezar de nuevo (otro grupo en este dispositivo)" });
     nuevo.addEventListener("click", function () {
-      var inst = estado.datos.institucion;
-      estado = nuevoEstado(); estado.datos = { institucion: inst }; persistir(); location.reload();
+      estado = nuevoEstado(); persistir(); location.reload();
     });
     ex.appendChild(d); ex.appendChild(nuevo);
   }

@@ -16,7 +16,7 @@ window.DATOS = {
    },
    "contexto_titulo": "I. Contexto del caso: el semáforo de la sala",
    "contexto": [
-    "En el Colegio Los Aromos, los cursos de primer ciclo aplican desde marzo un plan de convivencia pedido por el sostenedor. El plan nació de un diagnóstico interno según el cual las anotaciones negativas en el libro de clases de primero a cuarto básico casi se duplicaron entre 2025 y 2026. Al término del primer semestre, el colegio debe informar al sostenedor los resultados del plan.",
+    "En el Colegio Los Aromos, los cursos de primer ciclo aplican desde marzo un plan de convivencia pedido por el sostenedor. El plan nació de un diagnóstico interno según el cual las anotaciones negativas en el libro de clases de primero a cuarto básico casi se duplicaron entre 2024 y 2025. Al término del primer semestre, el colegio debe informar al sostenedor los resultados del plan.",
     "Carolina, profesora jefe del 2° B, instaló en marzo un “semáforo de conducta”: un afiche con el nombre de cada niño y un perro de ropa que se mueve entre verde, amarillo y rojo a lo largo de la jornada. Quienes terminan la semana en verde reciben un timbre y, a fin de mes, los que suman más timbres reciben el “diploma del mes”. En abril, el 2° A adoptó el mismo sistema. Carolina sostiene que el curso está más tranquilo. Sin embargo, Andrea, educadora diferencial del Programa de Integración Escolar (PIE), que trabaja en la sala seis horas a la semana, ha observado que algunos niños lloran cuando mueven su perro, y que otros dejaron de levantar la mano para no equivocarse. Uno de ellos, Tomás, que está en evaluación por posible déficit atencional, termina en rojo casi todos los días, y sus compañeros ya le dicen “el rojo”.",
     "Andrea propuso retirar el semáforo y reemplazarlo por acuerdos individuales con cada niño y reconocimientos al curso completo. Carolina no está de acuerdo: sostiene que los niños necesitan límites claros y visibles, que el sistema funciona para la mayoría y que el sostenedor espera ver menos anotaciones. Marcela, asistente de aula del curso, piensa que el problema no es tener normas, sino que el semáforo queda a la vista todo el día y que siempre terminan en rojo los mismos; sugiere que parta de cero en cada bloque de clases.",
     "La situación escaló cuando, en el grupo de WhatsApp de apoderados, algunas familias celebraron el diploma y otras contaron que sus hijos llegan angustiados a la casa preguntando si mañana quedarán en rojo. Dos familias pidieron por escrito que sus hijos sean cambiados al 2° A. La jefa de la Unidad Técnico-Pedagógica (UTP), que necesita mantener el plan e informar sus resultados, pidió al equipo de aula una propuesta. Entre las exigencias del plan, el bienestar de los niños, las expectativas de las familias y las diferencias profesionales, el equipo aún no logra acordar un camino común."
@@ -119,7 +119,7 @@ window.DATOS = {
     "Catalina": "#9c5578",
     "Ignacio": "#7b6a36"
    },
-   "presentacion_dialogo": "Valentina, Joaquín, Catalina e Ignacio son estudiantes de pedagogía. Tienen que resolver el caso “El semáforo de la sala” y entregar un informe. Esta es su conversación. En algunos momentos la conversación queda abierta: ahí te toca a ti tomar la palabra por uno de ellos.",
+   "presentacion_dialogo": "Valentina, Joaquín, Catalina e Ignacio son estudiantes de Pedagogía en Educación Básica. Tienen que resolver el caso “El semáforo de la sala” y entregar un informe. Esta es su conversación. En algunos momentos la conversación queda abierta: ahí te toca a ti tomar la palabra por uno de ellos.",
    "dialogo": [
     {
      "tipo": "fase",
@@ -584,7 +584,7 @@ window.DATOS = {
     "Antonia": "#9c5578",
     "Diego": "#7b6a36"
    },
-   "presentacion_dialogo": "Josefa, Matías, Antonia y Diego son estudiantes de pedagogía. Tienen que resolver el caso “La tabla de puntos” y entregar un informe. Esta es su conversación. En algunos momentos la conversación queda abierta: ahí te toca a ti tomar la palabra por uno de ellos.",
+   "presentacion_dialogo": "Josefa, Matías, Antonia y Diego son estudiantes de Pedagogía en Educación Física. Tienen que resolver el caso “La tabla de puntos” y entregar un informe. Esta es su conversación. En algunos momentos la conversación queda abierta: ahí te toca a ti tomar la palabra por uno de ellos.",
    "dialogo": [
     {
      "tipo": "fase",

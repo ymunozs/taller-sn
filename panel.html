@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <meta name="description" content="Compilación de las respuestas del Taller S y N: operadores elegidos, diversidad y textos por momento.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f5d8a'/%3E%3Cpath d='M8 22V14M14 22V9M20 22v-6M26 22V11' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=20260928c">
 </head>
 <body class="wide">
 <header class="topbar">
@@ -89,8 +89,8 @@
 </div>
 <div class="tooltip hidden" id="tip"></div>
 
-<script src="config.js"></script>
-<script src="datos.js"></script>
+<script src="config.js?v=20260928c"></script>
+<script src="datos.js?v=20260928c"></script>
 <script>
 (function () {
   "use strict";
@@ -199,7 +199,7 @@
     var sh = $("l-hueco"); sh.innerHTML = "";
     HUECOS.forEach(function (h) { sh.appendChild(el("option", { value: h.id, text: "Momento " + h.n + " · " + h.habla })); });
   }
-  Object.keys(D.casos).forEach(function (cid) { $("f-carrera").appendChild(el("option", { value: cid, text: D.casos[cid].carrera })); });
+  CFG.INSTITUCIONES.forEach(function (i) { $("f-carrera").appendChild(el("option", { value: i.caso, text: D.casos[i.caso].carrera + " (" + i.id + ")" })); });
   $("f-carrera").value = leer("panelSN:carrera") || "ef";
   if (!CASOS[$("f-carrera").value]) $("f-carrera").value = Object.keys(CASOS)[0];
   usarCaso($("f-carrera").value);
@@ -374,7 +374,7 @@
   });
 
   // ---------- QR ----------
-  var QRS = [{ id: "general", t: "General" }].concat(CFG.INSTITUCIONES.map(function (i) { return { id: i, t: i }; }));
+  var QRS = [{ id: "general", t: "General" }].concat(CFG.INSTITUCIONES.map(function (i) { return { id: i.id, t: i.id + " · " + D.casos[i.caso].carrera }; }));
   var base = CFG.URL_PUBLICA || location.href.replace(/panel\.html.*$/, "");
   function verQR(q) {
     $("qr-img").src = "qr-" + q.id + ".svg";

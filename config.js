@@ -7,6 +7,10 @@ window.CONFIG = {
   // Dirección pública de la actividad (la que codifican los QR).
   URL_PUBLICA: "https://ymunozs.github.io/taller-sn/",
   SESION: "Taller2-SN-2026-18m",
-  INSTITUCIONES: ["UST", "UAndes"],
+  // Cada institución trabaja un caso (id del caso en datos.js). El orden es el del menú.
+  INSTITUCIONES: [
+    { id: "UAndes", nombre: "Universidad de los Andes", caso: "basica" },
+    { id: "UST", nombre: "Universidad Santo Tomás", caso: "ef" }
+  ],
   MIN_CARACTERES: 10
 };
